@@ -22,7 +22,13 @@ env:
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     value: 1:771370714889:web:ef2dc6c2a168f46df3f5d8
 
+  # Resend (email invitations admin)
+  - variable: RESEND_FROM_EMAIL
+    value: onboarding@resend.dev
+
   # Secrets — gérés via Google Cloud Secret Manager
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
   - variable: GEMINI_API_KEY
     secret: GEMINI_API_KEY
   - variable: REMOVE_BG_API_KEY

@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Packages ESM-only chargés côté serveur uniquement — ne pas bundler
+  experimental: {
+    serverComponentsExternalPackages: ['resend'],
+  },
   images: {
     remotePatterns: [
       // Unsplash (images produits mockées)

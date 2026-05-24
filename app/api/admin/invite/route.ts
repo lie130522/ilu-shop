@@ -7,18 +7,14 @@ import { Resend } from 'resend';
 
 export const maxDuration = 10;
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const FROM = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-
 function buildInviteEmail(opts: {
   email: string;
   token: string;
   invitedByName: string;
   permissions: string[];
+  appUrl: string;
 }): string {
-  const link = `${APP_URL}/admin/invitation/${opts.token}`;
+  const link = `${opts.appUrl}/admin/invitation/${opts.token}`;
   const permsList = opts.permissions
     .map((p) => `<li style="margin:4px 0;">${p}</li>`)
     .join('');
@@ -98,6 +94,11 @@ function buildInviteEmail(opts: {
 
 export async function POST(req: NextRequest) {
   try {
+    // Instanciation à la demande — évite l'évaluation statique au build
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const FROM = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
     const body = await req.json() as {
       email?: string;
       token?: string;
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
       from: FROM,
       to: email,
       subject: 'Invitation à rejoindre l\'équipe ILU SHOP Admin',
-      html: buildInviteEmail({ email, token, invitedByName, permissions }),
+      html: buildInviteEmail({ email, token, invitedByName, permissions, appUrl: APP_URL }),
     });
 
     if (error) {
