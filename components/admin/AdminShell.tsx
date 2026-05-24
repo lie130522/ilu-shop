@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useAdmin } from './AdminProvider';
 import { AdminSidebar } from './AdminSidebar';
 
-const PUBLIC_PREFIXES = ['/admin/invitation'];
+const PUBLIC_PREFIXES = ['/admin/invitation', '/admin/login'];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { ready, currentAdmin } = useAdmin();

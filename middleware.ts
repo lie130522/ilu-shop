@@ -5,8 +5,8 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 
-// Routes admin accessibles sans être connecté (page d'invitation)
-const PUBLIC_ADMIN_PATHS = ['/admin/invitation'];
+// Routes admin accessibles sans cookie (login, invitations)
+const PUBLIC_ADMIN_PATHS = ['/admin/login', '/admin/invitation'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
   // Ne s'applique qu'aux routes /admin/*
   if (!pathname.startsWith('/admin')) return NextResponse.next();
 
-  // Routes publiques de l'espace admin (invitations)
+  // Routes publiques de l'espace admin
   if (PUBLIC_ADMIN_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
@@ -22,7 +22,8 @@ export function middleware(request: NextRequest) {
   // Vérifier le cookie de session admin
   const adminCookie = request.cookies.get('__ilu_admin');
   if (!adminCookie || adminCookie.value !== '1') {
-    const loginUrl = new URL('/connexion', request.url);
+    // Redirige vers /admin/login pour que AdminProvider puisse poser le cookie
+    const loginUrl = new URL('/admin/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
