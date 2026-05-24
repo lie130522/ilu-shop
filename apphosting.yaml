@@ -8,6 +8,10 @@ env:
   - variable: NEXT_PUBLIC_APP_URL
     value: https://ilu-shop--ilu-shop.europe-west4.hosted.app
 
+  # Admin principal email (doit correspondre exactement au compte Google)
+  - variable: NEXT_PUBLIC_ADMIN_EMAIL
+    value: lievinkamba1@gmail.com
+
   # Firebase Client SDK (public — exposé au navigateur)
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyCy56RADaGcKfZ4zZEbEMUH592fajHtD4I

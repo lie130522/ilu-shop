@@ -1,14 +1,19 @@
 'use client';
 
 // Page de connexion admin — pont entre Firebase Auth et AdminProvider.
-// Accessible sans cookie (__ilu_admin). Laisse AdminProvider s'initialiser,
-// pose le cookie, puis redirige vers /admin.
+// Accessible sans cookie (__ilu_admin). Gère elle-même le bootstrap admin
+// pour éviter que le bouton reste bloqué si AdminProvider ne change pas d'état.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
+import { bootstrapAdminIfNeeded } from '@/lib/firebase/admins';
 import { useAdmin } from '@/components/admin/AdminProvider';
+
+function setAdminCookie() {
+  document.cookie = '__ilu_admin=1; path=/; SameSite=Strict; max-age=86400';
+}
 
 export default function AdminLoginPage() {
   const { ready, currentAdmin } = useAdmin();
@@ -18,10 +23,13 @@ export default function AdminLoginPage() {
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Empêche de traiter une redirection deux fois
+  const redirecting = useRef(false);
 
-  // Dès que AdminProvider confirme l'admin → redirige
+  // Si AdminProvider confirme déjà l'admin (ex : retour en arrière) → redirige
   useEffect(() => {
-    if (ready && currentAdmin) {
+    if (ready && currentAdmin && !redirecting.current) {
+      redirecting.current = true;
       router.replace(redirectTo === '/admin/login' ? '/admin' : redirectTo);
     }
   }, [ready, currentAdmin, redirectTo, router]);
@@ -29,18 +37,48 @@ export default function AdminLoginPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError('');
+
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      // onAuthStateChanged dans AdminProvider détecte la connexion,
-      // appelle bootstrapAdminIfNeeded, pose le cookie, met à jour currentAdmin
-    } catch {
-      setError('Connexion échouée. Vérifiez votre compte Google.');
+      // Force la re-sélection du compte pour éviter les silences sur un compte déjà connecté
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const credential = await signInWithPopup(auth, provider);
+
+      const { uid, email, displayName } = credential.user;
+
+      // Vérifie/crée le document admin directement — n'attend pas AdminProvider
+      const admin = await bootstrapAdminIfNeeded(
+        uid,
+        email ?? '',
+        displayName ?? '',
+      );
+
+      if (admin) {
+        // Pose le cookie maintenant pour que le middleware laisse passer la redirection
+        setAdminCookie();
+        redirecting.current = true;
+        router.replace(redirectTo === '/admin/login' ? '/admin' : redirectTo);
+        // Ne pas appeler setLoading(false) — on quitte la page
+      } else {
+        setError(
+          'Accès refusé. Ce compte Google n\'est pas enregistré comme administrateur ILU SHOP.',
+        );
+        setLoading(false);
+      }
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code ?? '';
+      // L'utilisateur a fermé la fenêtre popup — pas d'erreur visible
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setLoading(false);
+        return;
+      }
+      console.error('[AdminLogin] signInWithPopup error:', err);
+      setError('Connexion échouée. Vérifiez votre compte Google et réessayez.');
       setLoading(false);
     }
   };
 
-  // Chargement ou redirection en cours
+  // Chargement initial d'AdminProvider ou redirection en cours
   if (!ready || (ready && currentAdmin)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bone">
@@ -54,8 +92,6 @@ export default function AdminLoginPage() {
     );
   }
 
-  // Compte Firebase Auth présent mais pas dans Firestore admins
-  // (ready = true, currentAdmin = null)
   return (
     <div className="min-h-screen flex items-center justify-center bg-bone px-4">
       <div className="w-full max-w-sm">

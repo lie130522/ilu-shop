@@ -88,7 +88,7 @@ export async function createAdminDoc(
 // principal configuré, le document est créé automatiquement.
 
 const PRINCIPAL_EMAIL =
-  process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? 'lievinkabamba1@gmail.com';
+  process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? 'lievinkamba1@gmail.com';
 
 export async function bootstrapAdminIfNeeded(
   uid: string,
@@ -98,12 +98,12 @@ export async function bootstrapAdminIfNeeded(
   // Vérifier si un document existe déjà
   const existing = await getAdminByUid(uid);
   if (existing) {
-    // Mettre à jour lastLogin
-    await setDoc(
+    // Mettre à jour lastLogin (non bloquant — échec silencieux)
+    setDoc(
       doc(db, 'admins', uid),
       { lastLogin: new Date().toISOString() },
       { merge: true },
-    );
+    ).catch(() => {});
     return { ...existing, lastLogin: new Date().toISOString() };
   }
 
