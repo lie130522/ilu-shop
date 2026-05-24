@@ -1,15 +1,21 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
 import { bootstrapAdminIfNeeded, subscribeAdminByUid } from '@/lib/firebase/admins';
+import { subscribeShopSettings, saveShopSettings, getShopSettings } from '@/lib/firebase/settings';
+import {
+  subscribe as chatSubscribe,
+  getConversations,
+  initAdminConversations,
+  updateConversationStatus,
+} from '@/lib/chat/store';
 import {
   ADMIN_MAX,
   SEED_CLIENTS,
   SEED_INVITATIONS,
   SEED_NOTIFICATIONS,
-  SEED_ORDERS,
 } from '@/lib/admin/seed';
 import type {
   Admin,
@@ -24,13 +30,10 @@ import { PRODUCTS as SEED_PRODUCTS } from '@/lib/products';
 import type { Product } from '@/lib/types';
 
 const STORAGE = {
-  admins: 'ilu_admins',
   invitations: 'ilu_invitations',
   clients: 'ilu_clients',
-  orders: 'ilu_orders',
   notifications: 'ilu_notifications',
   products: 'ilu_products',
-  rate: 'ilu_exchange_rate',
 } as const;
 
 // Cookie léger posé côté client pour le middleware (protection routes /admin/*)
@@ -54,10 +57,10 @@ interface AdminContextValue {
   admins: Admin[];
   invitations: Invitation[];
   clients: Client[];
-  orders: OrderConversation[];
+  orders: OrderConversation[];         // Firestore via chat store (P13)
   notifications: AdminNotification[];
   products: Product[];
-  exchangeRate: number;
+  exchangeRate: number;               // Firestore shop_settings (P11)
   rateUpdatedAt: string;
   rateUpdatedBy: string;
   // Auth
@@ -105,36 +108,35 @@ function generateToken(): string {
   return `tok-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+// Snapshot stable pour useSyncExternalStore (évite les recréations d'array)
+const EMPTY_CONVERSATIONS: OrderConversation[] = [];
+
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>(SEED_INVITATIONS);
   const [clients, setClients] = useState<Client[]>(SEED_CLIENTS);
-  const [orders, setOrders] = useState<OrderConversation[]>(SEED_ORDERS);
   const [notifications, setNotifications] = useState<AdminNotification[]>(SEED_NOTIFICATIONS);
   const [products, setProducts] = useState<Product[]>(SEED_PRODUCTS);
+
+  // P11 — Taux depuis Firestore (shop_settings)
   const [exchangeRate, setExchangeRate] = useState<number>(2000);
-  const [rateUpdatedAt, setRateUpdatedAt] = useState<string>('2026-05-22T14:00:00Z');
+  const [rateUpdatedAt, setRateUpdatedAt] = useState<string>('2026-05-24T00:00:00Z');
   const [rateUpdatedBy, setRateUpdatedBy] = useState<string>('Lievin Kabamba');
 
-  // Hydrate non-auth data from localStorage
+  // P13 — Commandes depuis Firestore via chat store (useSyncExternalStore)
+  const orders = useSyncExternalStore(chatSubscribe, getConversations, () => EMPTY_CONVERSATIONS);
+
+  // Hydrate non-auth data from localStorage (invitations, clients, notifications, products)
   useEffect(() => {
     setInvitations(loadFromStorage<Invitation[]>(STORAGE.invitations, SEED_INVITATIONS));
     setClients(loadFromStorage<Client[]>(STORAGE.clients, SEED_CLIENTS));
-    setOrders(loadFromStorage<OrderConversation[]>(STORAGE.orders, SEED_ORDERS));
     setNotifications(loadFromStorage<AdminNotification[]>(STORAGE.notifications, SEED_NOTIFICATIONS));
     setProducts(loadFromStorage<Product[]>(STORAGE.products, SEED_PRODUCTS));
-    const rateData = loadFromStorage<{ rate: number; updatedAt: string; updatedBy: string }>(
-      STORAGE.rate,
-      { rate: 2000, updatedAt: '2026-05-22T14:00:00Z', updatedBy: 'Lievin Kabamba' },
-    );
-    setExchangeRate(rateData.rate);
-    setRateUpdatedAt(rateData.updatedAt);
-    setRateUpdatedBy(rateData.updatedBy);
   }, []);
 
-  // Persist non-auth data
+  // Persist non-auth data (orders et taux maintenant dans Firestore — non persistés ici)
   useEffect(() => {
     if (typeof window !== 'undefined') localStorage.setItem(STORAGE.invitations, JSON.stringify(invitations));
   }, [invitations]);
@@ -142,29 +144,33 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') localStorage.setItem(STORAGE.clients, JSON.stringify(clients));
   }, [clients]);
   useEffect(() => {
-    if (typeof window !== 'undefined') localStorage.setItem(STORAGE.orders, JSON.stringify(orders));
-  }, [orders]);
-  useEffect(() => {
     if (typeof window !== 'undefined') localStorage.setItem(STORAGE.notifications, JSON.stringify(notifications));
   }, [notifications]);
   useEffect(() => {
     if (typeof window !== 'undefined') localStorage.setItem(STORAGE.products, JSON.stringify(products));
   }, [products]);
+
+  // P11 — S'abonner au taux de change depuis Firestore
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(
-        STORAGE.rate,
-        JSON.stringify({ rate: exchangeRate, updatedAt: rateUpdatedAt, updatedBy: rateUpdatedBy }),
-      );
-    }
-  }, [exchangeRate, rateUpdatedAt, rateUpdatedBy]);
+    const unsub = subscribeShopSettings((settings) => {
+      setExchangeRate(settings.exchangeRate ?? 2000);
+      if (settings.rateUpdatedAt) setRateUpdatedAt(settings.rateUpdatedAt);
+      if (settings.rateUpdatedBy) setRateUpdatedBy(settings.rateUpdatedBy);
+    });
+    return unsub;
+  }, []);
+
+  // P13 — Initialiser l'abonnement Firestore aux conversations (commandes)
+  useEffect(() => {
+    const unsub = initAdminConversations();
+    return unsub;
+  }, []);
 
   // ─── Firebase Auth → Firestore admin lookup ──────────────────────────────────
   const unsubAdminRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Nettoyer l'ancien listener Firestore admin
       unsubAdminRef.current?.();
       unsubAdminRef.current = null;
 
@@ -176,7 +182,6 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Tenter le bootstrap (1ère connexion de l'admin principal)
       const admin = await bootstrapAdminIfNeeded(
         firebaseUser.uid,
         firebaseUser.email ?? '',
@@ -184,14 +189,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       );
 
       if (!admin) {
-        // Utilisateur Firebase connecté mais pas admin
         setCurrentAdmin(null);
         setAdminCookie(false);
         setReady(true);
         return;
       }
 
-      // Admin trouvé — s'abonner aux changements en temps réel
       setCurrentAdmin(admin);
       setAdmins([admin]);
       setAdminCookie(true);
@@ -286,7 +289,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       const target = admins.find((a) => a.id === adminId);
       if (!target || target.role === 'admin_principal') return;
       setAdmins((prev) => prev.filter((a) => a.id !== adminId));
-      // TODO Groupe 3 : supprimer le document Firestore `admins/{adminId}`
+      // TODO Groupe 3 finition : supprimer le document Firestore `admins/{adminId}`
     },
     [currentAdmin, admins],
   );
@@ -297,15 +300,25 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ─── Modules ──────────────────────────────────────────────────────────────────
-  const updateExchangeRate = useCallback(
-    (rate: number) => {
-      if (!currentAdmin) return;
-      setExchangeRate(rate);
-      setRateUpdatedAt(nowISO());
-      setRateUpdatedBy(currentAdmin.fullName);
-    },
-    [currentAdmin],
-  );
+
+  // P11 — Met à jour le taux dans Firestore (source de vérité partagée)
+  const currentAdminRef = useRef(currentAdmin);
+  currentAdminRef.current = currentAdmin;
+
+  const updateExchangeRate = useCallback((rate: number) => {
+    const admin = currentAdminRef.current;
+    if (!admin) return;
+    const now = nowISO();
+    const updatedBy = admin.fullName;
+    // Mise à jour optimiste locale
+    setExchangeRate(rate);
+    setRateUpdatedAt(now);
+    setRateUpdatedBy(updatedBy);
+    // Persistance Firestore (fire-and-forget)
+    getShopSettings().then((current) => {
+      saveShopSettings({ ...current, exchangeRate: rate, rateUpdatedAt: now, rateUpdatedBy: updatedBy });
+    }).catch(() => {});
+  }, []);
 
   const toggleFeatured = useCallback((productId: string) => {
     setProducts((prev) =>
@@ -327,8 +340,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  // P13 — updateOrderStatus passe maintenant par le chat store Firestore
   const updateOrderStatus = useCallback((orderId: string, status: OrderStatus) => {
-    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)));
+    updateConversationStatus(orderId, status).catch(() => {});
   }, []);
 
   const markNotificationRead = useCallback((id: string) => {

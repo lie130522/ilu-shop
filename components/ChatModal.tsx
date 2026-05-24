@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSyncExternalStore } from 'react';
 import { useShop } from './ShopProvider';
+import { useAuth } from './AuthProvider';
 import { PRODUCTS } from '@/lib/products';
 import { formatCDF, formatUSD, usdToCdf } from '@/lib/currency';
 import type { ChatMessageRecord } from '@/lib/admin/types';
@@ -11,6 +12,7 @@ import {
   subscribe,
   getConversations,
   findOrCreateConversation,
+  initClientConversation,
   sendMessage,
   markConversationRead,
   broadcastTyping,
@@ -22,11 +24,12 @@ function fmtTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
-// Stable server snapshot — must be module-level to avoid re-creating on every render
+// Snapshot stable pour useSyncExternalStore
 const EMPTY_CONVERSATIONS: ReturnType<typeof getConversations> = [];
 
 export function ChatModal() {
-  const { chatOpen, closeChat, cart } = useShop();
+  const { chatOpen, closeChat, cart, exchangeRate } = useShop();
+  const { user } = useAuth();
 
   const [convId, setConvId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -39,12 +42,19 @@ export function ChatModal() {
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputThrottle = useRef<number>(0);
 
-  // Live messages from the cross-tab store
+  // Messages en temps réel depuis Firestore
   const conversations = useSyncExternalStore(subscribe, getConversations, () => EMPTY_CONVERSATIONS);
   const conv = convId ? conversations.find((c) => c.id === convId) : null;
   const messages = (conv?.messages ?? []).filter((m) => m.sender !== 'system');
 
-  // ── Listen for admin typing events ──────────────────────────
+  // ── S'abonner à la conversation Firestore quand convId est connu ────────────
+  useEffect(() => {
+    if (!convId) return;
+    const unsub = initClientConversation(convId);
+    return unsub;
+  }, [convId]);
+
+  // ── Écouter les événements de frappe de l'admin ─────────────────────────────
   useEffect(() => {
     const unsub = subscribeEvents((e) => {
       if (e.type === 'typing' && e.convId === convId && e.sender === 'admin') {
@@ -56,7 +66,7 @@ export function ChatModal() {
     return unsub;
   }, [convId]);
 
-  // ── On open: find or create conversation ────────────────────
+  // ── Ouverture du chat : trouver ou créer une conversation Firestore ──────────
   useEffect(() => {
     if (!chatOpen) {
       setConvId(null);
@@ -67,7 +77,6 @@ export function ChatModal() {
 
     const sessionId = getOrCreateSessionId();
 
-    // Build cart summary strings
     const cartLines = cart
       .map((item) => {
         const p = PRODUCTS.find((x) => x.id === item.productId);
@@ -94,7 +103,7 @@ export function ChatModal() {
           .join(' + ') + (cart.length > 2 ? ` +${cart.length - 2}` : '')
       : 'Aucun article';
 
-    // Try to find an existing open conversation for this session
+    // Chercher d'abord dans le cache local
     const existing = getConversations().find(
       (c) => c.clientId === sessionId && c.status !== 'closed',
     );
@@ -102,78 +111,59 @@ export function ChatModal() {
     if (existing) {
       setConvId(existing.id);
       markConversationRead(existing.id, 'client');
-    } else {
-      // Create a new conversation and send a simulated admin greeting
-      const cid = findOrCreateConversation(sessionId, {
-        clientName: 'Visiteur',
+      return;
+    }
+
+    // Sinon : créer dans Firestore (async)
+    (async () => {
+      const conv = await findOrCreateConversation(sessionId, {
+        clientName: user?.displayName || 'Visiteur',
         cartSummary,
         itemsLabel,
         totalUSD,
-      }).id;
-      setConvId(cid);
+        uid: user?.uid,
+      });
+      setConvId(conv.id);
 
-      // Show typing indicator then greeting
-      setTimeout(() => broadcastTyping(cid, 'admin'), 500);
-      setTimeout(() => {
-        const greeting =
-          cartLines.length > 0
-            ? `Bonjour ! 👋 Merci pour votre intérêt.\n\nVotre panier :\n${cartLines.join('\n')}\n\nTotal : ${formatUSD(totalUSD)} / ≈ ${formatCDF(usdToCdf(totalUSD))}\n\nComment souhaitez-vous payer (Mobile Money, virement, cash) et où livrer ?`
-            : `Bonjour ! 👋 Bienvenue chez ILU SHOP. Comment pouvons-nous vous aider ?`;
-        sendMessage(cid, 'admin', greeting);
-      }, 1400);
-    }
+      // Message de bienvenue automatique
+      const greeting =
+        cartLines.length > 0
+          ? `Bonjour ! 👋 Merci pour votre intérêt.\n\nVotre panier :\n${cartLines.join('\n')}\n\nTotal : ${formatUSD(totalUSD)} / ≈ ${formatCDF(usdToCdf(totalUSD, exchangeRate))}\n\nNotre équipe va vous contacter pour le paiement et la livraison. En attendant, n'hésitez pas à poser vos questions ici. 🛍️`
+          : `Bonjour ! 👋 Bienvenue chez ILU SHOP. Comment pouvons-nous vous aider ?`;
+      await sendMessage(conv.id, 'admin', greeting);
+    })();
   }, [chatOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Mark read when new admin messages arrive ─────────────────
+  // ── Marquer lu quand de nouveaux messages admin arrivent ────────────────────
   useEffect(() => {
-    if (chatOpen && convId) {
-      const hasUnread = (conv?.messages ?? []).some(
-        (m) => m.sender !== 'client' && !m.readByClient,
-      );
-      if (hasUnread) markConversationRead(convId, 'client');
+    if (chatOpen && convId && conv?.unreadCount) {
+      markConversationRead(convId, 'client');
     }
-  }, [messages.length, chatOpen, convId, conv?.messages]);
+  }, [messages.length, chatOpen, convId, conv?.unreadCount]);
 
-  // ── Auto-scroll ──────────────────────────────────────────────
+  // ── Auto-scroll ─────────────────────────────────────────────────────────────
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages.length, adminTyping, uploadProgress]);
 
-  // ── Send text message ─────────────────────────────────────────
-  const handleSend = () => {
+  // ── Envoyer un message texte ─────────────────────────────────────────────────
+  const handleSend = async () => {
     const text = input.trim();
     if (!text || !convId) return;
-    sendMessage(convId, 'client', text);
     setInput('');
-
-    // Simulate admin reply (mock mode)
-    const cid = convId;
-    setTimeout(() => broadcastTyping(cid, 'admin'), 700);
-    const replies = [
-      'Parfait ! On accepte M-Pesa, Airtel Money et Orange Money. Pour Kinshasa, livraison sous 24h à 5 000 FC. Ça vous convient ?',
-      'Très bien, je note. Pouvez-vous me confirmer votre adresse exacte ?',
-      "Merci ! Je vous envoie le numéro M-Pesa pour le paiement dans un instant. Vous préférez le matin ou l'après-midi pour la livraison ?",
-      'Reçu ! Je confirme votre commande et vous tiens informé du suivi. 🛍️',
-    ];
-    setTimeout(() => {
-      sendMessage(cid, 'admin', replies[Math.floor(Math.random() * replies.length)]);
-    }, 1900);
+    await sendMessage(convId, 'client', text);
   };
 
-  // ── Handle file selection ─────────────────────────────────────
+  // ── Envoi de fichier (photo / vidéo) ────────────────────────────────────────
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !convId) return;
-
-    // Reset input value so the same file can be re-selected
     e.target.value = '';
 
     const isVideo = file.type.startsWith('video/');
     const isImage = file.type.startsWith('image/');
-
     if (!isImage && !isVideo) return;
 
-    // Validate video duration ≤ 30s
     if (isVideo) {
       const valid = await checkVideoDuration(file);
       if (!valid) {
@@ -184,13 +174,12 @@ export function ChatModal() {
 
     setUploading(true);
     setUploadProgress(0);
-
     const cid = convId;
     try {
       const url = await uploadChatFile(cid, file, ({ percent }) => {
         setUploadProgress(percent);
       });
-      sendMessage(cid, 'client', isVideo ? '🎥 Vidéo' : '📷 Photo', {
+      await sendMessage(cid, 'client', isVideo ? '🎥 Vidéo' : '📷 Photo', {
         mediaUrl: url,
         mediaType: isVideo ? 'video' : 'image',
       });
@@ -202,7 +191,7 @@ export function ChatModal() {
     }
   };
 
-  // ── Broadcast client typing (throttled) ──────────────────────
+  // ── Indicateur de frappe client (throttled) ──────────────────────────────────
   const handleTyping = () => {
     if (!convId) return;
     const now = Date.now();
@@ -253,7 +242,7 @@ export function ChatModal() {
           {messages.map((m) => (
             <Bubble key={m.id} msg={m} />
           ))}
-          {/* Upload progress bubble */}
+          {/* Upload progress */}
           {uploading && (
             <div className="self-end max-w-[85%]">
               <div className="bg-terra/80 text-cream px-4 py-3 rounded-2xl rounded-br-sm text-sm">
@@ -298,7 +287,6 @@ export function ChatModal() {
 
         {/* Input */}
         <div className="px-4 py-3 border-t border-line bg-cream flex items-center gap-2">
-          {/* File upload button */}
           <button
             type="button"
             disabled={uploading}
@@ -326,7 +314,7 @@ export function ChatModal() {
               setInput(e.target.value);
               handleTyping();
             }}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="Écrire un message…"
             className="flex-1 px-4 py-2.5 rounded-full bg-bone border border-line text-sm outline-none focus:border-terra"
           />
@@ -347,7 +335,7 @@ export function ChatModal() {
   );
 }
 
-// ── Video duration check ──────────────────────────────────────
+// ── Validation durée vidéo ────────────────────────────────────────────────────
 function checkVideoDuration(file: File): Promise<boolean> {
   return new Promise((resolve) => {
     const video = document.createElement('video');
@@ -365,7 +353,7 @@ function checkVideoDuration(file: File): Promise<boolean> {
   });
 }
 
-// ── Message bubble ────────────────────────────────────────────
+// ── Bulle de message ──────────────────────────────────────────────────────────
 function Bubble({ msg }: { msg: ChatMessageRecord }) {
   const isClient = msg.sender === 'client';
   return (
@@ -377,7 +365,6 @@ function Bubble({ msg }: { msg: ChatMessageRecord }) {
             : 'bg-cream text-ink rounded-bl-sm border border-line'
         }`}
       >
-        {/* Media attachment */}
         {msg.mediaUrl && msg.mediaType === 'image' && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -395,7 +382,6 @@ function Bubble({ msg }: { msg: ChatMessageRecord }) {
             style={{ maxHeight: 200 }}
           />
         )}
-        {/* Text content (hide generic label if media present) */}
         {msg.content && !(msg.mediaUrl && (msg.content === '📷 Photo' || msg.content === '🎥 Vidéo')) && (
           <div className="px-4 py-2.5 whitespace-pre-line">{msg.content}</div>
         )}

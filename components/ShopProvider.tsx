@@ -3,8 +3,10 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import type { CartItem, Currency } from '@/lib/types';
 import { subscribeWishlist, addToWishlist, removeFromWishlist } from '@/lib/firebase/db';
+import { subscribeShopSettings } from '@/lib/firebase/settings';
 import { auth } from '@/lib/firebase/client';
 import { onAuthStateChanged } from 'firebase/auth';
+import { USD_TO_CDF_RATE } from '@/lib/currency';
 
 interface ShopContextValue {
   currency: Currency;
@@ -20,6 +22,9 @@ interface ShopContextValue {
   chatOpen: boolean;
   openChat: () => void;
   closeChat: () => void;
+  // P11 — taux de change depuis Firestore (fallback: USD_TO_CDF_RATE)
+  exchangeRate: number;
+  rateUpdatedAt: string;
 }
 
 const ShopContext = createContext<ShopContextValue | null>(null);
@@ -32,6 +37,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState<number>(USD_TO_CDF_RATE);
+  const [rateUpdatedAt, setRateUpdatedAt] = useState<string>('');
   const uidRef = useRef<string | null>(null);
 
   // Hydrate from localStorage
@@ -47,20 +54,39 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Firestore wishlist sync when user logs in/out
+  // P11 — Taux de change depuis Firestore en temps réel
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsub = subscribeShopSettings((settings) => {
+      if (settings.exchangeRate) setExchangeRate(settings.exchangeRate);
+      if (settings.rateUpdatedAt) setRateUpdatedAt(settings.rateUpdatedAt);
+    });
+    return unsub;
+  }, []);
+
+  // P17 — Firestore wishlist sync (fuite mémoire corrigée)
+  // Le listener Firestore est correctement nettoyé quand l'utilisateur se déconnecte
+  // ou quand le composant est démonté.
+  useEffect(() => {
+    let unsubFirestore: (() => void) | null = null;
+
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      // Nettoyer l'ancien listener Firestore à chaque changement d'auth
+      unsubFirestore?.();
+      unsubFirestore = null;
       uidRef.current = user?.uid ?? null;
+
       if (user) {
-        // Subscribe to Firestore wishlist — overwrites local
-        const unsubFS = subscribeWishlist(user.uid, (ids) => {
+        unsubFirestore = subscribeWishlist(user.uid, (ids) => {
           setWishlist(ids);
           localStorage.setItem(STORAGE.wishlist, JSON.stringify(ids));
         });
-        return unsubFS;
       }
     });
-    return unsub;
+
+    return () => {
+      unsubAuth();
+      unsubFirestore?.(); // nettoyage du listener Firestore à l'unmount
+    };
   }, []);
 
   useEffect(() => {
@@ -120,7 +146,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const next = prev.includes(productId)
         ? prev.filter((id) => id !== productId)
         : [...prev, productId];
-      // Sync with Firestore if logged in
       const uid = uidRef.current;
       if (uid) {
         if (prev.includes(productId)) removeFromWishlist(uid, productId).catch(() => {});
@@ -146,6 +171,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     chatOpen,
     openChat: () => setChatOpen(true),
     closeChat: () => setChatOpen(false),
+    exchangeRate,
+    rateUpdatedAt,
   };
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

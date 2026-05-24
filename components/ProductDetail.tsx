@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useShop } from './ShopProvider';
 import { useAuth } from './AuthProvider';
 import { PriceDisplay } from './PriceDisplay';
-import { USD_TO_CDF_RATE, RATE_UPDATED_AT } from '@/lib/currency';
+import { USD_TO_CDF_RATE } from '@/lib/currency';
 import { trackView, trackCartAdd, trackWishlist, addRecentlyViewed } from '@/lib/tracking';
 import type { Product } from '@/lib/types';
 
@@ -171,8 +171,7 @@ export function ProductDetail({ product }: { product: Product }) {
             <div className="mt-8 pb-8 border-b border-line">
               <PriceDisplay usd={product.priceUSD} oldUsd={product.oldPriceUSD} size="xl" />
               <p className="mt-3 text-[11px] text-muted font-light">
-                Taux : 1 USD = {USD_TO_CDF_RATE.toLocaleString('fr-FR')} FC • Mis à jour le{' '}
-                {RATE_UPDATED_AT}
+                Taux indicatif : 1 USD ≈ {USD_TO_CDF_RATE.toLocaleString('fr-FR')} FC
               </p>
             </div>
 

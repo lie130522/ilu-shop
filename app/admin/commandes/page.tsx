@@ -14,6 +14,7 @@ import {
   updateConversationStatus,
   broadcastTyping,
   subscribeEvents,
+  initAdminConversations,
 } from '@/lib/chat/store';
 import {
   playNewMessageSound,
@@ -78,6 +79,12 @@ export default function AdminOrdersPage() {
   const inputThrottle = useRef<number>(0);
   const threadRef = useRef<HTMLDivElement>(null);
 
+  // P12 — Initialiser l'abonnement Firestore aux conversations
+  useEffect(() => {
+    const unsub = initAdminConversations();
+    return unsub;
+  }, []);
+
   // Set default active on first load
   useEffect(() => {
     if (!activeId && conversations.length > 0) {
@@ -129,15 +136,15 @@ export default function AdminOrdersPage() {
   // ── Mark as read when switching conversation ─────────────────
   const handleSelectConv = (id: string) => {
     setActiveId(id);
-    markConversationRead(id, 'admin');
+    markConversationRead(id, 'admin'); // fire-and-forget async OK
   };
 
   // ── Admin sends a message ────────────────────────────────────
-  const handleAdminSend = () => {
+  const handleAdminSend = async () => {
     const text = adminInput.trim();
     if (!text || !activeId) return;
-    sendMessage(activeId, 'admin', text);
-    setAdminInput('');
+    setAdminInput(''); // vider immédiatement pour UX réactive
+    await sendMessage(activeId, 'admin', text);
   };
 
   // ── Broadcast admin typing (throttled) ──────────────────────

@@ -12,13 +12,14 @@ import type { ClientOrder, UserProfile } from '@/lib/firebase/db';
 
 type Tab = 'dashboard' | 'commandes' | 'wishlist' | 'profil';
 
+// P15 — Aligné sur OrderStatus de lib/admin/types
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pending: { label: 'En attente', color: 'bg-gold/20 text-yellow-800 border-gold/30' },
+  open: { label: 'En attente', color: 'bg-gold/20 text-yellow-800 border-gold/30' },
   in_progress: { label: 'En cours', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  confirmed: { label: 'Confirmée', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  order_confirmed: { label: 'Confirmée', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   shipped: { label: 'Expédiée', color: 'bg-purple-50 text-purple-700 border-purple-200' },
   delivered: { label: 'Livrée ✓', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-  cancelled: { label: 'Annulée', color: 'bg-terra/10 text-terra-dark border-terra/30' },
+  closed: { label: 'Clôturée', color: 'bg-terra/10 text-terra-dark border-terra/30' },
 };
 
 export default function ComptePage() {
@@ -171,7 +172,7 @@ export default function ComptePage() {
                 <StatCard label="Wishlist" value={String(wishlist.length)} icon="♡" onClick={() => setTab('wishlist')} />
                 <StatCard
                   label="Dépensé"
-                  value={formatUSD(orders.filter((o) => o.status !== 'cancelled').reduce((s, o) => s + o.totalUSD, 0))}
+                  value={formatUSD(orders.filter((o) => o.status !== 'closed').reduce((s, o) => s + o.totalUSD, 0))}
                   icon="💳"
                 />
               </div>

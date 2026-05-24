@@ -18,6 +18,9 @@ export interface ShopSettings {
   orange: MobileMoneyConfig;
   withdrawalFeeCDF: number;   // frais de retrait MM (défaut 3000)
   deliveryNote: string;       // note auto envoyée dans le chat à la livraison
+  exchangeRate: number;       // taux USD → CDF (source de vérité, P11)
+  rateUpdatedAt?: string;     // ISO date de la dernière mise à jour du taux
+  rateUpdatedBy?: string;     // nom de l'admin qui a mis à jour le taux
   updatedAt?: unknown;
 }
 
@@ -26,7 +29,10 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   airtel: { number: '', accountName: 'ILU SHOP', active: true },
   orange: { number: '', accountName: 'ILU SHOP', active: false },
   withdrawalFeeCDF: 3000,
-  deliveryNote: 'Pour confirmer votre présence au lieu de livraison, merci d\'envoyer une photo ou courte vidéo (max 30s) de l\'endroit.',
+  deliveryNote: "Pour confirmer votre présence au lieu de livraison, merci d'envoyer une photo ou courte vidéo (max 30s) de l'endroit.",
+  exchangeRate: 2000,
+  rateUpdatedAt: '2026-05-24T00:00:00Z',
+  rateUpdatedBy: 'Lievin Kabamba',
 };
 
 const SETTINGS_DOC = () => doc(db, 'shop_settings', 'default');

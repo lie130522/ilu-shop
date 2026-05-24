@@ -64,6 +64,7 @@ export interface ChatMessageRecord {
 export interface OrderConversation {
   id: string;
   clientId: string;
+  uid?: string;           // Firebase auth uid (absent si client anonyme)
   clientName: string;
   status: OrderStatus;
   assignedAdminId?: string;

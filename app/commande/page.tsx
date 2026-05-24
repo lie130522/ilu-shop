@@ -110,40 +110,55 @@ export default function CommandePage() {
     if (!paymentMethod) { setError('Choisis un mode de paiement.'); return; }
     setLoading(true);
     try {
+      const pmLabel = PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label ?? paymentMethod;
+
+      // P16 — Snapshot du priceUSD dans chaque ligne panier
+      const itemsWithPrice = lines.map(({ item, product }) => ({
+        ...item,
+        priceUSD: product.priceUSD,
+      }));
+
+      // P15 — Statut aligné sur les types admin ('open')
+      // P16 — items avec priceUSD snapshotté
       const order = {
-        items: cart,
+        items: itemsWithPrice,
         itemsLabel,
         totalUSD: subtotal,
+        ...(isMM ? { withdrawalFeeCDF: settings.withdrawalFeeCDF } : {}),
         deliveryInfo: delivery,
-        paymentMethod: PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label ?? paymentMethod,
-        status: 'pending' as const,
+        paymentMethod: pmLabel,
+        status: 'open' as const,
       };
 
+      // Créer la commande Firestore (utilisateurs connectés)
       let newOrderId: string | null = null;
       if (user) {
         newOrderId = await createOrder(user.uid, order);
         setOrderId(newOrderId);
       }
 
-      // ── Auto chat message after order confirmation ───────────
+      // P18 — Vider le panier dès la confirmation
+      clearCart();
+
+      // P12/P13/P14 — Créer la conversation Firestore (tous les clients, y compris anonymes)
       const sessionId = getOrCreateSessionId();
-      const pmLabel = PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label ?? paymentMethod;
 
       const cartLines = lines.map(({ item, product }) => {
         const variant = [item.size, item.color].filter(Boolean).join(' / ');
         return `• ${product.name}${variant ? ` (${variant})` : ''} × ${item.quantity}`;
       });
 
-      const conv = findOrCreateConversation(sessionId, {
+      const conv = await findOrCreateConversation(sessionId, {
         clientName: delivery.name || 'Client',
         cartSummary: cartLines.join('\n') + `\nTotal : ${formatUSD(subtotal)}`,
         itemsLabel,
         totalUSD: subtotal,
+        uid: user?.uid,
       });
 
+      // Message auto selon le mode de paiement
       if (isMM && mmConfig?.number) {
-        // Mobile Money → envoyer coordonnées de paiement
-        sendMessage(conv.id, 'admin',
+        await sendMessage(conv.id, 'admin',
           `✅ Commande enregistrée ! Voici nos coordonnées pour le paiement ${pmLabel} :\n\n` +
           `📱 Numéro : ${mmConfig.number}\n` +
           `👤 Nom du compte : ${mmConfig.accountName}\n\n` +
@@ -151,17 +166,15 @@ export default function CommandePage() {
           `Merci d'envoyer une capture d'écran de votre transaction ici pour confirmer le paiement. 📸`,
         );
       } else if (isMM) {
-        // MM sélectionné mais numéro non configuré
-        sendMessage(conv.id, 'admin',
+        await sendMessage(conv.id, 'admin',
           `✅ Commande enregistrée ! Notre équipe va vous contacter pour vous communiquer le numéro ${pmLabel}. Merci de patienter.`,
         );
       } else if (paymentMethod === 'cash') {
-        // Cash à la livraison → demande confirmation de présence
-        sendMessage(conv.id, 'admin',
+        await sendMessage(conv.id, 'admin',
           `✅ Commande enregistrée ! Paiement : Cash à la livraison.\n\n${settings.deliveryNote}`,
         );
       } else if (paymentMethod === 'virement') {
-        sendMessage(conv.id, 'admin',
+        await sendMessage(conv.id, 'admin',
           `✅ Commande enregistrée ! Notre équipe va vous contacter pour vous communiquer les coordonnées bancaires pour le virement.`,
         );
       }
@@ -175,7 +188,6 @@ export default function CommandePage() {
   };
 
   const handleOpenChat = () => {
-    clearCart();
     openChat();
     router.push('/');
   };

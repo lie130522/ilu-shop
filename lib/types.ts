@@ -30,6 +30,7 @@ export interface CartItem {
   size?: string;
   color?: string;
   quantity: number;
+  priceUSD?: number; // snapshotté au moment de la commande (P16)
 }
 
 export interface ChatMessage {

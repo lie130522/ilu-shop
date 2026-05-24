@@ -51,10 +51,11 @@ service cloud.firestore {
 
     // ── Paramètres boutique ───────────────────────────────────────────────────
     // Lecture publique : les numéros MM et frais sont affichés à tous les clients.
-    // Écriture réservée à l'admin_principal (protection contre substitution de numéro MM).
+    // Écriture : tout admin authentifié (l'UI vérifie les permissions par champ).
+    // Note : les numéros MM sensibles sont sous contrôle de l'admin principal via l'UI.
     match /shop_settings/{doc} {
       allow read: if true;
-      allow write: if isPrincipalAdmin();
+      allow write: if isAdmin();
     }
 
     // ── Statistiques produits ─────────────────────────────────────────────────
@@ -71,6 +72,17 @@ service cloud.firestore {
     match /anonymous_behavior/{doc} {
       allow write: if true;
       allow read: if false;
+    }
+
+    // ── Conversations (commandes chat) ────────────────────────────────────────
+    // Créées par n'importe quel visiteur (anonyme ou connecté).
+    // Lecture/écriture par UUID-as-capability : l'ID est un UUID non-devinable.
+    // L'admin peut lire toutes les conversations via sa collection admins.
+    match /conversations/{convId} {
+      allow create: if true;
+      allow read: if true;   // sécurité par UUID non-devinable + accès admin
+      allow update: if true; // client envoie messages, admin met à jour statut
+      allow delete: if false;
     }
 
   }

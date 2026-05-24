@@ -1,282 +1,396 @@
-// Vanilla cross-tab chat store.
-// Source of truth: localStorage. Sync: BroadcastChannel + storage events.
-// Used by both the client-side ChatModal and the admin /admin/commandes page.
+// ─── Chat Store — Firestore ────────────────────────────────────────────────────
+// Source de vérité : Firestore collection `conversations/{convId}`
+// Chaque document contient les métadonnées + un tableau `messages` embarqué.
+// BroadcastChannel conservé uniquement pour les indicateurs de frappe (éphémères).
+// API compatible avec les composants existants (useSyncExternalStore pattern).
 
-import { SEED_ORDERS } from '@/lib/admin/seed';
-import type {
-  ChatMessageRecord,
-  OrderConversation,
-  OrderStatus,
-} from '@/lib/admin/types';
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  orderBy,
+  where,
+  arrayUnion,
+  increment,
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import type { ChatMessageRecord, OrderConversation, OrderStatus } from '@/lib/admin/types';
 
-const KEY = 'ilu_conversations';
-const CHANNEL_NAME = 'ilu-chat';
+// ── Types internes ─────────────────────────────────────────────────────────────
+
+export type RealtimeEvent =
+  | { type: 'typing'; convId: string; sender: 'client' | 'admin' }
+  | { type: 'notify_new_message'; convId: string; sender: 'client' | 'admin'; content: string; clientName: string }
+  | { type: 'notify_new_order'; convId: string; clientName: string; totalUSD: number; itemsLabel: string };
 
 type Listener = () => void;
-type RealtimeEvent =
-  | { type: 'sync' }
-  | { type: 'typing'; convId: string; sender: 'client' | 'admin' }
-  | {
-      type: 'notify_new_message';
-      convId: string;
-      sender: 'client' | 'admin';
-      content: string;
-      clientName: string;
-    }
-  | {
-      type: 'notify_new_order';
-      convId: string;
-      clientName: string;
-      totalUSD: number;
-      itemsLabel: string;
-    };
+type EventListener = (e: RealtimeEvent) => void;
 
-let store: OrderConversation[] = [];
-let hydrated = false;
+// ── État en mémoire (cache Firestore → React) ──────────────────────────────────
+
+let conversations: OrderConversation[] = [];
 const stateListeners = new Set<Listener>();
-const eventListeners = new Set<(e: RealtimeEvent) => void>();
+const eventListeners = new Set<EventListener>();
+
+// Unsubscribes Firestore
+let adminUnsub: (() => void) | null = null;
+const clientUnsubs = new Map<string, () => void>();
+
+// BroadcastChannel (frappe uniquement)
 let channel: BroadcastChannel | null = null;
 
-function hydrate() {
-  if (hydrated || typeof window === 'undefined') return;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      store = JSON.parse(raw);
-    } else {
-      store = SEED_ORDERS.map((o) => ({ ...o, messages: [...o.messages] }));
-      localStorage.setItem(KEY, JSON.stringify(store));
-    }
-  } catch {
-    store = [];
-  }
-
-  try {
-    channel = new BroadcastChannel(CHANNEL_NAME);
-    channel.onmessage = (e: MessageEvent<RealtimeEvent>) => {
-      handleRemoteEvent(e.data);
-    };
-  } catch {
-    channel = null;
-  }
-
-  // Fallback: storage events (fired on OTHER tabs)
-  window.addEventListener('storage', (e) => {
-    if (e.key === KEY && e.newValue) {
-      try {
-        store = JSON.parse(e.newValue);
-        notifyState();
-      } catch {}
-    }
-  });
-
-  hydrated = true;
-}
-
-function handleRemoteEvent(e: RealtimeEvent) {
-  if (e.type === 'sync') {
+function getChannel(): BroadcastChannel | null {
+  if (typeof window === 'undefined') return null;
+  if (!channel) {
     try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        store = JSON.parse(raw);
-        notifyState();
-      }
-    } catch {}
+      channel = new BroadcastChannel('ilu-chat');
+      channel.onmessage = (e: MessageEvent<RealtimeEvent>) => {
+        eventListeners.forEach((cb) => cb(e.data));
+      };
+    } catch {
+      return null;
+    }
   }
-  eventListeners.forEach((cb) => cb(e));
+  return channel;
 }
 
-function persistAndBroadcast(extraEvent?: RealtimeEvent) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(KEY, JSON.stringify(store));
-  channel?.postMessage({ type: 'sync' });
-  if (extraEvent) {
-    channel?.postMessage(extraEvent);
-    eventListeners.forEach((cb) => cb(extraEvent));
-  }
-  notifyState();
-}
+// ── Helpers internes ───────────────────────────────────────────────────────────
 
 function notifyState() {
   stateListeners.forEach((l) => l());
 }
 
-// ─── React-friendly snapshot API ──────────────────────────────
+function notifyEvent(e: RealtimeEvent) {
+  eventListeners.forEach((cb) => cb(e));
+  if (e.type !== 'notify_new_order') getChannel()?.postMessage(e);
+}
+
+/** Normalise les Timestamps Firestore en chaînes ISO */
+function normalizeConv(id: string, data: Record<string, unknown>): OrderConversation {
+  const toISO = (v: unknown): string => {
+    if (!v) return new Date().toISOString();
+    if (typeof v === 'string') return v;
+    if (typeof (v as { toDate?: unknown }).toDate === 'function') {
+      return (v as { toDate: () => Date }).toDate().toISOString();
+    }
+    return new Date().toISOString();
+  };
+
+  const rawMessages = (data.messages as ChatMessageRecord[] | undefined) ?? [];
+  const messages: ChatMessageRecord[] = rawMessages.map((m) => ({
+    ...m,
+    createdAt: toISO((m as unknown as Record<string, unknown>).createdAt),
+  }));
+
+  return {
+    id,
+    clientId: (data.clientId as string) ?? '',
+    uid: (data.uid as string | undefined) ?? undefined,
+    clientName: (data.clientName as string) ?? 'Client',
+    status: (data.status as OrderStatus) ?? 'open',
+    itemsLabel: (data.itemsLabel as string) ?? '',
+    totalUSD: (data.totalUSD as number) ?? 0,
+    paymentMethod: (data.paymentMethod as string | undefined) ?? undefined,
+    lastMessage: (data.lastMessage as string) ?? '',
+    lastMessageAt: toISO(data.lastMessageAt),
+    unreadCount: (data.unreadCount as number) ?? 0,
+    createdAt: toISO(data.createdAt),
+    messages,
+  };
+}
+
+// ── API React (useSyncExternalStore) ───────────────────────────────────────────
 
 export function getConversations(): OrderConversation[] {
-  hydrate();
-  return store;
+  return conversations;
 }
 
 export function getConversation(id: string): OrderConversation | undefined {
-  hydrate();
-  return store.find((c) => c.id === id);
+  return conversations.find((c) => c.id === id);
 }
 
+/** S'abonner aux changements d'état du store (pour useSyncExternalStore) */
 export function subscribe(listener: Listener): () => void {
-  hydrate();
   stateListeners.add(listener);
-  return () => {
-    stateListeners.delete(listener);
-  };
+  return () => stateListeners.delete(listener);
 }
 
-export function subscribeEvents(callback: (e: RealtimeEvent) => void): () => void {
-  hydrate();
+/** S'abonner aux événements temps réel (notifications, frappe) */
+export function subscribeEvents(callback: EventListener): () => void {
+  getChannel();
   eventListeners.add(callback);
+  return () => eventListeners.delete(callback);
+}
+
+// ── Abonnements Firestore ──────────────────────────────────────────────────────
+
+/**
+ * Admin : s'abonner à toutes les conversations en temps réel.
+ * À appeler dans un useEffect du composant admin.
+ */
+export function initAdminConversations(): () => void {
+  if (adminUnsub) return () => {};
+  try {
+    const q = query(collection(db, 'conversations'), orderBy('lastMessageAt', 'desc'));
+    adminUnsub = onSnapshot(
+      q,
+      (snap) => {
+        conversations = snap.docs.map((d) =>
+          normalizeConv(d.id, d.data() as Record<string, unknown>),
+        );
+        notifyState();
+      },
+      (err) => console.error('[chat/store] admin subscription error:', err),
+    );
+  } catch (err) {
+    console.error('[chat/store] initAdminConversations failed:', err);
+  }
   return () => {
-    eventListeners.delete(callback);
+    adminUnsub?.();
+    adminUnsub = null;
   };
 }
 
-// ─── Mutations ────────────────────────────────────────────────
+/**
+ * Client : s'abonner à une conversation spécifique.
+ * À appeler dans un useEffect du ChatModal avec le convId.
+ */
+export function initClientConversation(convId: string): () => void {
+  if (clientUnsubs.has(convId)) return () => {};
+  try {
+    const unsub = onSnapshot(
+      doc(db, 'conversations', convId),
+      (snap) => {
+        if (!snap.exists()) return;
+        const updated = normalizeConv(snap.id, snap.data() as Record<string, unknown>);
+        const idx = conversations.findIndex((c) => c.id === convId);
+        if (idx >= 0) {
+          conversations = [
+            ...conversations.slice(0, idx),
+            updated,
+            ...conversations.slice(idx + 1),
+          ];
+        } else {
+          conversations = [updated, ...conversations];
+        }
+        notifyState();
+      },
+      () => {},
+    );
+    clientUnsubs.set(convId, unsub);
+    return () => {
+      unsub();
+      clientUnsubs.delete(convId);
+    };
+  } catch {
+    return () => {};
+  }
+}
 
-export function createConversation(input: {
+// ── Mutations ──────────────────────────────────────────────────────────────────
+
+/** Crée une nouvelle conversation dans Firestore */
+export async function createConversation(input: {
   clientName: string;
-  sessionId?: string;
+  sessionId: string;
+  uid?: string;
   cartSummary: string;
   itemsLabel: string;
   totalUSD: number;
-}): OrderConversation {
-  hydrate();
-  const id = `conv-${Date.now()}`;
+}): Promise<OrderConversation> {
   const now = new Date().toISOString();
-  const conv: OrderConversation = {
-    id,
-    clientId: input.sessionId || `anon-${Date.now()}`,
+  const systemMsg: ChatMessageRecord = {
+    id: `msg-${Date.now()}-sys`,
+    sender: 'system',
+    content: `Panier : ${input.cartSummary}`,
+    createdAt: now,
+  };
+
+  const data = {
+    clientId: input.sessionId,
+    uid: input.uid ?? undefined,
     clientName: input.clientName,
-    status: 'open',
+    status: 'open' as OrderStatus,
     itemsLabel: input.itemsLabel,
     totalUSD: input.totalUSD,
     lastMessage: 'Nouveau panier',
     lastMessageAt: now,
     unreadCount: 0,
     createdAt: now,
-    messages: [
-      {
-        id: `msg-${Date.now()}-sys`,
-        sender: 'system',
-        content: `Panier : ${input.cartSummary}`,
-        createdAt: now,
-      },
-    ],
+    messages: [systemMsg],
   };
-  store = [conv, ...store];
-  persistAndBroadcast({
+
+  const ref = await addDoc(collection(db, 'conversations'), data);
+  const conv: OrderConversation = { id: ref.id, ...data };
+
+  // Mise à jour optimiste
+  conversations = [conv, ...conversations];
+  notifyState();
+
+  // Événement nouvelle commande (sons + notifs admin)
+  notifyEvent({
     type: 'notify_new_order',
-    convId: id,
+    convId: ref.id,
     clientName: input.clientName,
     totalUSD: input.totalUSD,
     itemsLabel: input.itemsLabel,
   });
+
   return conv;
 }
 
-export function findOrCreateConversation(
+/**
+ * Trouve la conversation ouverte d'une session ou en crée une nouvelle.
+ * Cherche d'abord dans le cache, puis dans Firestore.
+ */
+export async function findOrCreateConversation(
   sessionId: string,
   input: {
     clientName: string;
     cartSummary: string;
     itemsLabel: string;
     totalUSD: number;
+    uid?: string;
   },
-): OrderConversation {
-  hydrate();
-  const existing = store.find((c) => c.clientId === sessionId && c.status !== 'closed');
-  if (existing) return existing;
+): Promise<OrderConversation> {
+  // 1. Chercher dans le cache mémoire
+  const cached = conversations.find(
+    (c) => c.clientId === sessionId && c.status !== 'closed',
+  );
+  if (cached) return cached;
+
+  // 2. Chercher dans Firestore
+  try {
+    const q = query(
+      collection(db, 'conversations'),
+      where('clientId', '==', sessionId),
+    );
+    const snap = await getDocs(q);
+    const openDoc = snap.docs.find((d) => d.data().status !== 'closed');
+    if (openDoc) {
+      const conv = normalizeConv(openDoc.id, openDoc.data() as Record<string, unknown>);
+      if (!conversations.find((c) => c.id === conv.id)) {
+        conversations = [conv, ...conversations];
+        notifyState();
+      }
+      return conv;
+    }
+  } catch {
+    // Firestore indisponible — créer sans vérification
+  }
+
+  // 3. Créer une nouvelle conversation
   return createConversation({ ...input, sessionId });
 }
 
-export function sendMessage(
+/**
+ * Envoie un message dans une conversation.
+ * Écrit dans Firestore via arrayUnion (sans lecture préalable).
+ */
+export async function sendMessage(
   convId: string,
   sender: 'client' | 'admin' | 'system',
   content: string,
   media?: { mediaUrl: string; mediaType: 'image' | 'video' },
-): ChatMessageRecord | null {
-  hydrate();
-  const conv = store.find((c) => c.id === convId);
-  if (!conv) return null;
+): Promise<ChatMessageRecord | null> {
+  const now = new Date().toISOString();
+  const displayContent = content || (media?.mediaType === 'image' ? '📷 Photo' : '🎥 Vidéo');
 
   const msg: ChatMessageRecord = {
     id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     sender,
     content,
     ...(media ?? {}),
-    createdAt: new Date().toISOString(),
-    readByAdmin: sender === 'admin',
-    readByClient: sender === 'client',
+    createdAt: now,
   };
-  conv.messages = [...conv.messages, msg];
-  conv.lastMessage = content;
-  conv.lastMessageAt = msg.createdAt;
-  if (sender === 'client') {
-    conv.unreadCount = (conv.unreadCount ?? 0) + 1;
-  }
-  store = [...store];
 
-  persistAndBroadcast(
-    sender !== 'system'
-      ? {
-          type: 'notify_new_message',
-          convId: conv.id,
-          sender,
-          content,
-          clientName: conv.clientName,
-        }
-      : undefined,
-  );
+  const updates: Record<string, unknown> = {
+    messages: arrayUnion(msg),
+    lastMessage: displayContent,
+    lastMessageAt: now,
+  };
+
+  if (sender === 'client') {
+    updates.unreadCount = increment(1);
+  }
+
+  try {
+    await updateDoc(doc(db, 'conversations', convId), updates);
+
+    // Mise à jour optimiste du cache
+    const conv = conversations.find((c) => c.id === convId);
+    if (conv) {
+      const updated: OrderConversation = {
+        ...conv,
+        messages: [...conv.messages, msg],
+        lastMessage: displayContent,
+        lastMessageAt: now,
+        unreadCount: sender === 'client' ? (conv.unreadCount ?? 0) + 1 : conv.unreadCount,
+      };
+      conversations = conversations.map((c) => (c.id === convId ? updated : c));
+      notifyState();
+    }
+
+    if (sender !== 'system') {
+      notifyEvent({
+        type: 'notify_new_message',
+        convId,
+        sender,
+        content: displayContent,
+        clientName: conversations.find((c) => c.id === convId)?.clientName ?? 'Client',
+      });
+    }
+  } catch (err) {
+    console.error('[chat/store] sendMessage error:', err);
+    return null;
+  }
 
   return msg;
 }
 
-export function markConversationRead(convId: string, by: 'admin' | 'client'): void {
-  hydrate();
-  const conv = store.find((c) => c.id === convId);
-  if (!conv) return;
-  let changed = false;
-  conv.messages = conv.messages.map((m) => {
-    if (by === 'admin' && !m.readByAdmin) {
-      changed = true;
-      return { ...m, readByAdmin: true };
-    }
-    if (by === 'client' && !m.readByClient) {
-      changed = true;
-      return { ...m, readByClient: true };
-    }
-    return m;
-  });
-  if (by === 'admin' && conv.unreadCount > 0) {
-    conv.unreadCount = 0;
-    changed = true;
-  }
-  if (changed) {
-    store = [...store];
-    persistAndBroadcast();
-  }
+/** Marque une conversation comme lue (remet unreadCount à 0 côté admin) */
+export async function markConversationRead(convId: string, by: 'admin' | 'client'): Promise<void> {
+  if (by !== 'admin') return;
+  try {
+    await updateDoc(doc(db, 'conversations', convId), { unreadCount: 0 });
+    conversations = conversations.map((c) =>
+      c.id === convId ? { ...c, unreadCount: 0 } : c,
+    );
+    notifyState();
+  } catch {}
 }
 
-export function updateConversationStatus(
+/** Met à jour le statut d'une conversation */
+export async function updateConversationStatus(
   convId: string,
   status: OrderStatus,
   paymentMethod?: string,
-): void {
-  hydrate();
-  const conv = store.find((c) => c.id === convId);
-  if (!conv) return;
-  conv.status = status;
-  if (paymentMethod) conv.paymentMethod = paymentMethod;
-  store = [...store];
-  persistAndBroadcast();
+): Promise<void> {
+  try {
+    const updates: Record<string, unknown> = { status };
+    if (paymentMethod !== undefined) updates.paymentMethod = paymentMethod;
+    await updateDoc(doc(db, 'conversations', convId), updates);
+    conversations = conversations.map((c) =>
+      c.id === convId
+        ? { ...c, status, ...(paymentMethod !== undefined ? { paymentMethod } : {}) }
+        : c,
+    );
+    notifyState();
+  } catch {}
 }
 
+/** Diffuse un indicateur de frappe (BroadcastChannel uniquement — éphémère) */
 export function broadcastTyping(convId: string, sender: 'client' | 'admin'): void {
-  hydrate();
   const event: RealtimeEvent = { type: 'typing', convId, sender };
-  channel?.postMessage(event);
+  getChannel()?.postMessage(event);
   eventListeners.forEach((cb) => cb(event));
 }
 
-// ─── Session helper (anonymous client identifier) ─────────────
+// ── Session client ─────────────────────────────────────────────────────────────
 
 const SESSION_KEY = 'ilu_chat_session';
 
@@ -292,5 +406,3 @@ export function getOrCreateSessionId(): string {
   }
   return id;
 }
-
-export type { RealtimeEvent };

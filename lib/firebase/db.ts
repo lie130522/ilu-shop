@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './client';
 import type { CartItem } from '@/lib/types';
+import type { OrderStatus } from '@/lib/admin/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,12 +46,13 @@ export interface DeliveryInfo {
 
 export interface ClientOrder {
   id?: string;
-  items: CartItem[];
+  items: CartItem[];       // CartItem.priceUSD est snapshotté au moment de la commande (P16)
   itemsLabel: string;
   totalUSD: number;
+  withdrawalFeeCDF?: number; // frais de retrait MM inclus dans le total réel (P19)
   deliveryInfo: DeliveryInfo;
   paymentMethod: string;
-  status: 'pending' | 'in_progress' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: OrderStatus;     // aligné sur lib/admin/types (P15)
   chatConvId?: string;
   createdAt?: unknown;
   updatedAt?: unknown;
