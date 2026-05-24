@@ -182,38 +182,42 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const admin = await bootstrapAdminIfNeeded(
-        firebaseUser.uid,
-        firebaseUser.email ?? '',
-        firebaseUser.displayName ?? '',
-      );
+      try {
+        const admin = await bootstrapAdminIfNeeded(
+          firebaseUser.uid,
+          firebaseUser.email ?? '',
+          firebaseUser.displayName ?? '',
+        );
 
-      if (!admin) {
+        if (!admin) {
+          setCurrentAdmin(null);
+          setAdminCookie(false);
+        } else {
+          setCurrentAdmin(admin);
+          setAdmins([admin]);
+          setAdminCookie(true);
+
+          unsubAdminRef.current = subscribeAdminByUid(firebaseUser.uid, (updated) => {
+            if (updated) {
+              setCurrentAdmin(updated);
+              setAdmins((prev) => {
+                const others = prev.filter((a) => a.id !== updated.id);
+                return [updated, ...others];
+              });
+            } else {
+              setCurrentAdmin(null);
+              setAdmins([]);
+              setAdminCookie(false);
+            }
+          });
+        }
+      } catch (e) {
+        console.error('[AdminProvider] bootstrapAdminIfNeeded error:', e);
         setCurrentAdmin(null);
         setAdminCookie(false);
+      } finally {
         setReady(true);
-        return;
       }
-
-      setCurrentAdmin(admin);
-      setAdmins([admin]);
-      setAdminCookie(true);
-
-      unsubAdminRef.current = subscribeAdminByUid(firebaseUser.uid, (updated) => {
-        if (updated) {
-          setCurrentAdmin(updated);
-          setAdmins((prev) => {
-            const others = prev.filter((a) => a.id !== updated.id);
-            return [updated, ...others];
-          });
-        } else {
-          setCurrentAdmin(null);
-          setAdmins([]);
-          setAdminCookie(false);
-        }
-      });
-
-      setReady(true);
     });
 
     return () => {
