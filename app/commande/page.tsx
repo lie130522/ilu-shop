@@ -45,6 +45,10 @@ export default function CommandePage() {
   });
   const [paymentMethod, setPaymentMethod] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Mark hydration complete
+  useEffect(() => { setMounted(true); }, []);
 
   // Sync displayName when user loads
   useEffect(() => {
@@ -70,10 +74,11 @@ export default function CommandePage() {
     .map(({ product }) => product.name)
     .join(' + ') + (lines.length > 2 ? ` +${lines.length - 2}` : '');
 
-  // Redirect if cart empty
+  // Redirect if cart empty — only after hydration to avoid false redirect
   useEffect(() => {
+    if (!mounted) return;
     if (cart.length === 0 && step !== 'confirmation') router.replace('/panier');
-  }, [cart.length, step, router]);
+  }, [mounted, cart.length, step, router]);
 
   const stepIdx = STEPS.findIndex((s) => s.key === step);
 

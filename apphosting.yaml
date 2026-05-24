@@ -1,0 +1,31 @@
+runConfig:
+  cpu: 1
+  memoryMiB: 512
+  concurrency: 80
+
+env:
+  # App
+  - variable: NEXT_PUBLIC_APP_URL
+    value: https://ilu-shop--ilu-shop.europe-west4.hosted.app
+
+  # Firebase Client SDK (public — exposé au navigateur)
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyCy56RADaGcKfZ4zZEbEMUH592fajHtD4I
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: ilushop.firebaseapp.com
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: ilushop
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: ilushop.firebasestorage.app
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: 771370714889
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:771370714889:web:ef2dc6c2a168f46df3f5d8
+
+  # Secrets — gérés via Google Cloud Secret Manager
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+  - variable: REMOVE_BG_API_KEY
+    secret: REMOVE_BG_API_KEY
+  - variable: REPLICATE_API_TOKEN
+    secret: REPLICATE_API_TOKEN
