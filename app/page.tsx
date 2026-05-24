@@ -3,6 +3,7 @@ import { PRODUCTS, getFeaturedProducts, CATEGORIES } from '@/lib/products';
 import { ProductCard } from '@/components/ProductCard';
 import { Marquee } from '@/components/Marquee';
 import { PriceDisplay } from '@/components/PriceDisplay';
+import { RecommendedSection, RecentlyViewedSection } from '@/components/RecommendedSection';
 
 export default function HomePage() {
   const featured = getFeaturedProducts();
@@ -314,6 +315,10 @@ export default function HomePage() {
 
       {/* ━━━━━━━━━━━━━ HERO PRODUIT SECONDAIRE (LOCO style) ━━━━━━━━━━━━━ */}
       <SecondaryHero product={featured[1] ?? PRODUCTS[1]} />
+
+      {/* ━━━━━━━━━━━━━ RECOMMANDATIONS PERSONNALISÉES ━━━━━━━━━━━━━ */}
+      <RecentlyViewedSection />
+      <RecommendedSection />
     </>
   );
 }

@@ -26,6 +26,7 @@ export function AdminSidebar() {
   const items: NavItem[] = [
     { href: '/admin', label: 'Dashboard', icon: <DashboardIcon /> },
     { href: '/admin/produits', label: 'Catalogue', icon: <BagIcon />, permission: 'catalog' },
+    { href: '/admin/imports', label: 'Imports', icon: <ImportIcon />, permission: 'catalog' },
     {
       href: '/admin/commandes',
       label: 'Commandes & Chat',
@@ -36,6 +37,7 @@ export function AdminSidebar() {
     { href: '/admin/editorial', label: 'Éditorial', icon: <StarIcon />, permission: 'editorial' },
     { href: '/admin/taux', label: 'Taux de change', icon: <CoinIcon />, permission: 'exchange_rate' },
     { href: '/admin/clients', label: 'Clients', icon: <UsersIcon />, permission: 'clients' },
+    { href: '/admin/statistiques', label: 'Statistiques', icon: <ChartIcon />, permission: 'orders' },
     {
       href: '/admin/notifications',
       label: 'Notifications',
@@ -206,6 +208,22 @@ function CrownIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M3 9l3 9h12l3-9-5 3-4-6-4 6-5-3Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ImportIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 3v12m0 0-4-4m4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2" strokeLinecap="round" />
+    </svg>
+  );
+}
+function ChartIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 3v18h18" strokeLinecap="round" />
+      <path d="M7 16l4-6 4 4 4-8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -1,14 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useShop } from './ShopProvider';
+import { useAuth } from './AuthProvider';
 import { PriceDisplay } from './PriceDisplay';
 import { USD_TO_CDF_RATE, RATE_UPDATED_AT } from '@/lib/currency';
+import { trackView, trackCartAdd, trackWishlist, addRecentlyViewed } from '@/lib/tracking';
 import type { Product } from '@/lib/types';
 
 export function ProductDetail({ product }: { product: Product }) {
   const { addToCart, openChat, wishlist, toggleWishlist } = useShop();
+  const { user } = useAuth();
   const [activeImage, setActiveImage] = useState(0);
   const [size, setSize] = useState<string | undefined>(product.sizes?.[0]);
   const [color, setColor] = useState<string | undefined>(product.colors?.[0]?.name);
@@ -18,15 +21,28 @@ export function ProductDetail({ product }: { product: Product }) {
 
   const isWished = wishlist.includes(product.id);
 
+  // Track product view + recently viewed
+  useEffect(() => {
+    addRecentlyViewed(product.id);
+    trackView(user?.uid ?? null, product.id, product.category);
+  }, [product.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleAdd = () => {
     addToCart({ productId: product.id, size, color, quantity: qty });
+    trackCartAdd(user?.uid ?? null, product.id, product.category);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
 
   const handleOrder = () => {
     addToCart({ productId: product.id, size, color, quantity: qty });
+    trackCartAdd(user?.uid ?? null, product.id, product.category);
     setTimeout(() => openChat(), 100);
+  };
+
+  const handleWishlist = () => {
+    toggleWishlist(product.id);
+    trackWishlist(user?.uid ?? null, product.id, product.category);
   };
 
   return (
@@ -108,7 +124,7 @@ export function ProductDetail({ product }: { product: Product }) {
               </div>
               <button
                 type="button"
-                onClick={() => toggleWishlist(product.id)}
+                onClick={handleWishlist}
                 aria-label="Ajouter aux favoris"
                 className="shrink-0 w-12 h-12 rounded-full border border-line flex items-center justify-center hover:border-terra transition-colors"
               >

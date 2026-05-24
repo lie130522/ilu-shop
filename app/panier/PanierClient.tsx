@@ -1,13 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useShop } from '@/components/ShopProvider';
 import { PRODUCTS } from '@/lib/products';
 import { PriceDisplay } from '@/components/PriceDisplay';
 import { formatCDF, formatUSD, usdToCdf } from '@/lib/currency';
 
 export default function PanierClient() {
-  const { cart, removeFromCart, updateQuantity, openChat, clearCart } = useShop();
+  const { cart, removeFromCart, updateQuantity, clearCart } = useShop();
+  const router = useRouter();
 
   const lines = cart
     .map((item) => {
@@ -193,16 +195,16 @@ export default function PanierClient() {
 
             <button
               type="button"
-              onClick={openChat}
+              onClick={() => router.push('/commande')}
               className="mt-8 w-full h-14 rounded-full bg-terra hover:bg-terra-light hover:text-ink text-cream font-display text-sm font-semibold tracking-[0.2em] uppercase transition-colors flex items-center justify-center gap-3 group"
             >
-              💬 Passer commande
+              Passer commande
               <span className="transition-transform group-hover:translate-x-1">→</span>
             </button>
 
             <p className="mt-4 text-[11px] text-cream/50 font-light text-center leading-relaxed">
-              Un chat s'ouvre avec notre équipe. Vous convenez du paiement (Mobile Money,
-              virement, cash) et de la livraison.
+              Tu renseignes ton adresse et ton mode de paiement. Notre équipe te contacte ensuite
+              par chat pour finaliser.
             </p>
           </div>
 

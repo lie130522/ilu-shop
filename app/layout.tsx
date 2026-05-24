@@ -4,6 +4,7 @@ import './globals.css';
 import { ShopProvider } from '@/components/ShopProvider';
 import { ShopChrome } from '@/components/ShopChrome';
 import { AuthProvider } from '@/components/AuthProvider';
+import { CookieBanner } from '@/components/CookieBanner';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <ShopProvider>
             <ShopChrome>{children}</ShopChrome>
+            <CookieBanner />
           </ShopProvider>
         </AuthProvider>
       </body>

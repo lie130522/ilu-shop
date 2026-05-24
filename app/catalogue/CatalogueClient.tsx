@@ -17,9 +17,15 @@ const ALL_COLORS = Array.from(
 const ALL_SIZES = Array.from(new Set(PRODUCTS.flatMap((p) => p.sizes ?? [])));
 const MAX_PRICE = Math.ceil(Math.max(...PRODUCTS.map((p) => p.priceUSD)) / 100) * 100;
 
-export default function CatalogueClient() {
+interface CatalogueClientProps {
+  initialCategory?: Category;
+  initialSubcategory?: string;
+  hideHeader?: boolean;
+}
+
+export default function CatalogueClient({ initialCategory, initialSubcategory, hideHeader }: CatalogueClientProps = {}) {
   const searchParams = useSearchParams();
-  const initialCat = searchParams.get('cat') as Category | null;
+  const initialCat = initialCategory ?? (searchParams.get('cat') as Category | null);
 
   const [categories, setCategories] = useState<Set<Category>>(
     new Set(initialCat ? [initialCat] : []),
@@ -41,6 +47,13 @@ export default function CatalogueClient() {
       if (sizes.size > 0) {
         const hasSize = p.sizes?.some((s) => sizes.has(s));
         if (!hasSize) return false;
+      }
+      // Subcategory filter (from category page)
+      if (initialSubcategory) {
+        if (!p.subcategory.toLowerCase().includes(initialSubcategory.toLowerCase()) &&
+            !p.tags.some((t) => t.toLowerCase().includes(initialSubcategory.toLowerCase()))) {
+          return false;
+        }
       }
       return true;
     });
@@ -83,7 +96,7 @@ export default function CatalogueClient() {
   return (
     <>
       {/* Hero strip */}
-      <section className="bg-bone border-b border-line">
+      {!hideHeader && <section className="bg-bone border-b border-line">
         <div className="max-w-7xl mx-auto px-6 lg:px-10 py-14 lg:py-20">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div>
@@ -123,7 +136,7 @@ export default function CatalogueClient() {
             </div>
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* Main grid */}
       <section className="py-12">

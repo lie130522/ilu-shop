@@ -1,7 +1,10 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import type { CartItem, Currency } from '@/lib/types';
+import { subscribeWishlist, addToWishlist, removeFromWishlist } from '@/lib/firebase/db';
+import { auth } from '@/lib/firebase/client';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface ShopContextValue {
   currency: Currency;
@@ -29,7 +32,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const uidRef = useRef<string | null>(null);
 
+  // Hydrate from localStorage
   useEffect(() => {
     try {
       const c = localStorage.getItem(STORAGE.cart);
@@ -40,6 +45,22 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (wl) setWishlist(JSON.parse(wl));
     } catch {}
     setHydrated(true);
+  }, []);
+
+  // Firestore wishlist sync when user logs in/out
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      uidRef.current = user?.uid ?? null;
+      if (user) {
+        // Subscribe to Firestore wishlist — overwrites local
+        const unsubFS = subscribeWishlist(user.uid, (ids) => {
+          setWishlist(ids);
+          localStorage.setItem(STORAGE.wishlist, JSON.stringify(ids));
+        });
+        return unsubFS;
+      }
+    });
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -95,9 +116,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const clearCart = useCallback(() => setCart([]), []);
 
   const toggleWishlist = useCallback((productId: string) => {
-    setWishlist((prev) =>
-      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId],
-    );
+    setWishlist((prev) => {
+      const next = prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId];
+      // Sync with Firestore if logged in
+      const uid = uidRef.current;
+      if (uid) {
+        if (prev.includes(productId)) removeFromWishlist(uid, productId).catch(() => {});
+        else addToWishlist(uid, productId).catch(() => {});
+      }
+      return next;
+    });
   }, []);
 
   const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
