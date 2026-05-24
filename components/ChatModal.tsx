@@ -6,6 +6,7 @@ import { useShop } from './ShopProvider';
 import { PRODUCTS } from '@/lib/products';
 import { formatCDF, formatUSD, usdToCdf } from '@/lib/currency';
 import type { ChatMessageRecord } from '@/lib/admin/types';
+import { uploadChatFile } from '@/lib/firebase/settings';
 import {
   subscribe,
   getConversations,
@@ -30,8 +31,11 @@ export function ChatModal() {
   const [convId, setConvId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [adminTyping, setAdminTyping] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const bodyRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputThrottle = useRef<number>(0);
 
@@ -133,9 +137,9 @@ export function ChatModal() {
   // ── Auto-scroll ──────────────────────────────────────────────
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages.length, adminTyping]);
+  }, [messages.length, adminTyping, uploadProgress]);
 
-  // ── Send message ─────────────────────────────────────────────
+  // ── Send text message ─────────────────────────────────────────
   const handleSend = () => {
     const text = input.trim();
     if (!text || !convId) return;
@@ -154,6 +158,48 @@ export function ChatModal() {
     setTimeout(() => {
       sendMessage(cid, 'admin', replies[Math.floor(Math.random() * replies.length)]);
     }, 1900);
+  };
+
+  // ── Handle file selection ─────────────────────────────────────
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !convId) return;
+
+    // Reset input value so the same file can be re-selected
+    e.target.value = '';
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isImage && !isVideo) return;
+
+    // Validate video duration ≤ 30s
+    if (isVideo) {
+      const valid = await checkVideoDuration(file);
+      if (!valid) {
+        alert('La vidéo ne doit pas dépasser 30 secondes.');
+        return;
+      }
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    const cid = convId;
+    try {
+      const url = await uploadChatFile(cid, file, ({ percent }) => {
+        setUploadProgress(percent);
+      });
+      sendMessage(cid, 'client', isVideo ? '🎥 Vidéo' : '📷 Photo', {
+        mediaUrl: url,
+        mediaType: isVideo ? 'video' : 'image',
+      });
+    } catch {
+      alert("Erreur lors de l'envoi du fichier. Réessaie.");
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   // ── Broadcast client typing (throttled) ──────────────────────
@@ -207,6 +253,24 @@ export function ChatModal() {
           {messages.map((m) => (
             <Bubble key={m.id} msg={m} />
           ))}
+          {/* Upload progress bubble */}
+          {uploading && (
+            <div className="self-end max-w-[85%]">
+              <div className="bg-terra/80 text-cream px-4 py-3 rounded-2xl rounded-br-sm text-sm">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-3 h-3 border-2 border-cream/40 border-t-cream rounded-full animate-spin" />
+                  <span className="text-xs">Envoi en cours…</span>
+                </div>
+                <div className="w-full h-1.5 bg-cream/20 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-cream rounded-full transition-all"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <div className="text-right text-[10px] text-cream/70 mt-1">{uploadProgress}%</div>
+              </div>
+            </div>
+          )}
           {adminTyping && (
             <div className="self-start flex items-center gap-1 px-4 py-3 bg-cream rounded-2xl rounded-bl-sm">
               <span className="w-2 h-2 rounded-full bg-terra animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -234,6 +298,27 @@ export function ChatModal() {
 
         {/* Input */}
         <div className="px-4 py-3 border-t border-line bg-cream flex items-center gap-2">
+          {/* File upload button */}
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            title="Envoyer une photo ou vidéo (max 30s)"
+            className="w-9 h-9 rounded-full bg-bone border border-line hover:border-terra hover:bg-terra/5 flex items-center justify-center transition-colors disabled:opacity-40 shrink-0"
+            aria-label="Envoyer un fichier"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-muted">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
           <input
             type="text"
             value={input}
@@ -248,7 +333,7 @@ export function ChatModal() {
           <button
             type="button"
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || uploading}
             className="w-10 h-10 rounded-full bg-terra text-cream hover:bg-terra-dark disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
             aria-label="Envoyer"
           >
@@ -262,18 +347,58 @@ export function ChatModal() {
   );
 }
 
+// ── Video duration check ──────────────────────────────────────
+function checkVideoDuration(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const url = URL.createObjectURL(file);
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(video.duration <= 30);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(false);
+    };
+    video.src = url;
+  });
+}
+
+// ── Message bubble ────────────────────────────────────────────
 function Bubble({ msg }: { msg: ChatMessageRecord }) {
   const isClient = msg.sender === 'client';
   return (
     <div className={`max-w-[85%] ${isClient ? 'self-end' : 'self-start'}`}>
       <div
-        className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-line ${
+        className={`rounded-2xl overflow-hidden text-sm leading-relaxed ${
           isClient
             ? 'bg-terra text-cream rounded-br-sm'
             : 'bg-cream text-ink rounded-bl-sm border border-line'
         }`}
       >
-        {msg.content}
+        {/* Media attachment */}
+        {msg.mediaUrl && msg.mediaType === 'image' && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={msg.mediaUrl}
+            alt="Photo"
+            className="w-full max-w-[260px] object-cover block"
+            style={{ maxHeight: 200 }}
+          />
+        )}
+        {msg.mediaUrl && msg.mediaType === 'video' && (
+          <video
+            src={msg.mediaUrl}
+            controls
+            className="w-full max-w-[260px] block"
+            style={{ maxHeight: 200 }}
+          />
+        )}
+        {/* Text content (hide generic label if media present) */}
+        {msg.content && !(msg.mediaUrl && (msg.content === '📷 Photo' || msg.content === '🎥 Vidéo')) && (
+          <div className="px-4 py-2.5 whitespace-pre-line">{msg.content}</div>
+        )}
       </div>
       <div className={`text-[10px] text-muted mt-1 ${isClient ? 'text-right' : 'text-left'}`}>
         {isClient ? 'Vous' : 'ILU SHOP'} • {fmtTime(msg.createdAt)}

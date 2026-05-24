@@ -426,13 +426,34 @@ function ThreadBubble({ msg }: { msg: ChatMessageRecord }) {
   return (
     <div className={`flex flex-col max-w-[80%] ${isAdmin ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
       <div
-        className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-line ${
+        className={`rounded-2xl overflow-hidden text-sm leading-relaxed ${
           isAdmin
             ? 'bg-terra text-cream rounded-br-sm'
             : 'bg-cream text-ink rounded-bl-sm border border-line'
         }`}
       >
-        {msg.content}
+        {/* Media attachment */}
+        {msg.mediaUrl && msg.mediaType === 'image' && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={msg.mediaUrl}
+            alt="Photo"
+            className="w-full max-w-[260px] object-cover block"
+            style={{ maxHeight: 200 }}
+          />
+        )}
+        {msg.mediaUrl && msg.mediaType === 'video' && (
+          <video
+            src={msg.mediaUrl}
+            controls
+            className="w-full max-w-[260px] block"
+            style={{ maxHeight: 200 }}
+          />
+        )}
+        {/* Text content */}
+        {msg.content && !(msg.mediaUrl && (msg.content === '📷 Photo' || msg.content === '🎥 Vidéo')) && (
+          <div className="px-4 py-2.5 whitespace-pre-line">{msg.content}</div>
+        )}
       </div>
       <div className="text-[10px] text-muted mt-1 flex items-center gap-1.5">
         <span>{isAdmin ? 'Vous' : msg.sender === 'client' ? 'Client' : 'Système'}</span>

@@ -191,6 +191,7 @@ export function sendMessage(
   convId: string,
   sender: 'client' | 'admin' | 'system',
   content: string,
+  media?: { mediaUrl: string; mediaType: 'image' | 'video' },
 ): ChatMessageRecord | null {
   hydrate();
   const conv = store.find((c) => c.id === convId);
@@ -200,6 +201,7 @@ export function sendMessage(
     id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     sender,
     content,
+    ...(media ?? {}),
     createdAt: new Date().toISOString(),
     readByAdmin: sender === 'admin',
     readByClient: sender === 'client',

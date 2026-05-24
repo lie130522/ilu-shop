@@ -8,6 +8,9 @@ import { useAuth } from '@/components/AuthProvider';
 import { PRODUCTS } from '@/lib/products';
 import { formatCDF, formatUSD, usdToCdf } from '@/lib/currency';
 import { createOrder } from '@/lib/firebase/db';
+import { getShopSettings, DEFAULT_SETTINGS } from '@/lib/firebase/settings';
+import type { ShopSettings } from '@/lib/firebase/settings';
+import { getOrCreateSessionId, findOrCreateConversation, sendMessage } from '@/lib/chat/store';
 import type { DeliveryInfo } from '@/lib/firebase/db';
 
 type Step = 'recap' | 'livraison' | 'paiement' | 'confirmation';
@@ -19,6 +22,9 @@ const PAYMENT_METHODS = [
   { id: 'cash', label: 'Cash à la livraison', icon: '💵', detail: 'Payez en espèces à la réception' },
   { id: 'virement', label: 'Virement bancaire', icon: '🏦', detail: 'Virement vers notre compte' },
 ];
+
+const MM_IDS = ['mpesa', 'airtel', 'orange'] as const;
+type MMId = typeof MM_IDS[number];
 
 const STEPS: { key: Step; label: string }[] = [
   { key: 'recap', label: 'Panier' },
@@ -35,6 +41,7 @@ export default function CommandePage() {
   const [step, setStep] = useState<Step>('recap');
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [settings, setSettings] = useState<ShopSettings>(DEFAULT_SETTINGS);
 
   const [delivery, setDelivery] = useState<DeliveryInfo>({
     name: user?.displayName ?? '',
@@ -49,6 +56,11 @@ export default function CommandePage() {
 
   // Mark hydration complete
   useEffect(() => { setMounted(true); }, []);
+
+  // Load shop settings (MM numbers, withdrawal fee, delivery note)
+  useEffect(() => {
+    getShopSettings().then(setSettings);
+  }, []);
 
   // Sync displayName when user loads
   useEffect(() => {
@@ -73,6 +85,9 @@ export default function CommandePage() {
     .slice(0, 2)
     .map(({ product }) => product.name)
     .join(' + ') + (lines.length > 2 ? ` +${lines.length - 2}` : '');
+
+  const isMM = (MM_IDS as readonly string[]).includes(paymentMethod);
+  const mmConfig = isMM ? settings[paymentMethod as MMId] : null;
 
   // Redirect if cart empty — only after hydration to avoid false redirect
   useEffect(() => {
@@ -108,6 +123,47 @@ export default function CommandePage() {
       if (user) {
         newOrderId = await createOrder(user.uid, order);
         setOrderId(newOrderId);
+      }
+
+      // ── Auto chat message after order confirmation ───────────
+      const sessionId = getOrCreateSessionId();
+      const pmLabel = PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label ?? paymentMethod;
+
+      const cartLines = lines.map(({ item, product }) => {
+        const variant = [item.size, item.color].filter(Boolean).join(' / ');
+        return `• ${product.name}${variant ? ` (${variant})` : ''} × ${item.quantity}`;
+      });
+
+      const conv = findOrCreateConversation(sessionId, {
+        clientName: delivery.name || 'Client',
+        cartSummary: cartLines.join('\n') + `\nTotal : ${formatUSD(subtotal)}`,
+        itemsLabel,
+        totalUSD: subtotal,
+      });
+
+      if (isMM && mmConfig?.number) {
+        // Mobile Money → envoyer coordonnées de paiement
+        sendMessage(conv.id, 'admin',
+          `✅ Commande enregistrée ! Voici nos coordonnées pour le paiement ${pmLabel} :\n\n` +
+          `📱 Numéro : ${mmConfig.number}\n` +
+          `👤 Nom du compte : ${mmConfig.accountName}\n\n` +
+          `N'oubliez pas d'inclure les frais de retrait (${formatCDF(settings.withdrawalFeeCDF)}) dans votre virement.\n\n` +
+          `Merci d'envoyer une capture d'écran de votre transaction ici pour confirmer le paiement. 📸`,
+        );
+      } else if (isMM) {
+        // MM sélectionné mais numéro non configuré
+        sendMessage(conv.id, 'admin',
+          `✅ Commande enregistrée ! Notre équipe va vous contacter pour vous communiquer le numéro ${pmLabel}. Merci de patienter.`,
+        );
+      } else if (paymentMethod === 'cash') {
+        // Cash à la livraison → demande confirmation de présence
+        sendMessage(conv.id, 'admin',
+          `✅ Commande enregistrée ! Paiement : Cash à la livraison.\n\n${settings.deliveryNote}`,
+        );
+      } else if (paymentMethod === 'virement') {
+        sendMessage(conv.id, 'admin',
+          `✅ Commande enregistrée ! Notre équipe va vous contacter pour vous communiquer les coordonnées bancaires pour le virement.`,
+        );
       }
 
       setStep('confirmation');
@@ -318,36 +374,91 @@ export default function CommandePage() {
               )}
 
               <div className="space-y-3">
-                {PAYMENT_METHODS.map((pm) => (
-                  <button
-                    key={pm.id}
-                    type="button"
-                    onClick={() => setPaymentMethod(pm.id)}
-                    className={`w-full text-left rounded-lg border p-4 transition-all flex items-center gap-4 ${
-                      paymentMethod === pm.id
-                        ? 'border-terra bg-terra/5'
-                        : 'border-line bg-cream hover:border-terra/40'
-                    }`}
-                  >
-                    <span className="text-2xl shrink-0">{pm.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-display font-semibold text-sm text-ink">{pm.label}</div>
-                      <div className="text-xs text-muted mt-0.5">{pm.detail}</div>
-                    </div>
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                {PAYMENT_METHODS.map((pm) => {
+                  // Hide inactive MM methods
+                  if ((MM_IDS as readonly string[]).includes(pm.id)) {
+                    const cfg = settings[pm.id as MMId];
+                    if (!cfg.active) return null;
+                  }
+                  return (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(pm.id)}
+                      className={`w-full text-left rounded-lg border p-4 transition-all flex items-center gap-4 ${
                         paymentMethod === pm.id
-                          ? 'border-terra bg-terra'
-                          : 'border-line'
+                          ? 'border-terra bg-terra/5'
+                          : 'border-line bg-cream hover:border-terra/40'
                       }`}
                     >
-                      {paymentMethod === pm.id && (
-                        <div className="w-2 h-2 rounded-full bg-cream" />
-                      )}
-                    </div>
-                  </button>
-                ))}
+                      <span className="text-2xl shrink-0">{pm.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-display font-semibold text-sm text-ink">{pm.label}</div>
+                        <div className="text-xs text-muted mt-0.5">{pm.detail}</div>
+                      </div>
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                          paymentMethod === pm.id
+                            ? 'border-terra bg-terra'
+                            : 'border-line'
+                        }`}
+                      >
+                        {paymentMethod === pm.id && (
+                          <div className="w-2 h-2 rounded-full bg-cream" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* ── MM Info & withdrawal fee ── */}
+              {isMM && mmConfig && (
+                <div className="rounded-lg border border-terra/30 bg-terra/5 p-4 space-y-3">
+                  {mmConfig.number ? (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl shrink-0">📲</span>
+                      <div className="flex-1">
+                        <p className="font-display font-semibold text-sm text-ink mb-1">
+                          Coordonnées de paiement
+                        </p>
+                        <div className="space-y-0.5 text-sm text-ink">
+                          <div>
+                            <span className="text-muted text-xs">Numéro : </span>
+                            <span className="font-mono font-semibold">{mmConfig.number}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted text-xs">Nom du compte : </span>
+                            <span className="font-semibold">{mmConfig.accountName}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted">
+                      Notre équipe vous communiquera le numéro dans le chat après confirmation.
+                    </p>
+                  )}
+                  <div className="border-t border-terra/20 pt-3 flex items-start gap-2 text-sm">
+                    <span className="shrink-0">⚠️</span>
+                    <p className="text-ink/80 font-light">
+                      Les frais de retrait Mobile Money s&apos;élèvent à{' '}
+                      <strong className="text-terra">{formatCDF(settings.withdrawalFeeCDF)}</strong>.
+                      Ce montant est à ajouter au total de votre commande lors du virement.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Cash delivery info ── */}
+              {paymentMethod === 'cash' && (
+                <div className="rounded-lg border border-gold/30 bg-gold/5 p-4 flex items-start gap-3">
+                  <span className="text-xl shrink-0">📍</span>
+                  <p className="text-sm text-ink/80 font-light leading-relaxed">
+                    {settings.deliveryNote}
+                  </p>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button
@@ -393,6 +504,24 @@ export default function CommandePage() {
               {orderId && (
                 <div className="mt-4 inline-block bg-bone rounded-md px-4 py-2 font-mono text-xs text-muted">
                   Réf : {orderId.slice(0, 8).toUpperCase()}
+                </div>
+              )}
+
+              {isMM && (
+                <div className="mt-5 max-w-sm mx-auto rounded-lg border border-terra/30 bg-terra/5 p-4 text-left">
+                  <p className="font-display font-semibold text-sm text-ink mb-2">💬 Prochaine étape</p>
+                  <p className="text-sm text-muted font-light leading-relaxed">
+                    Les coordonnées de paiement ont été envoyées dans le chat. Effectue le virement et envoie une capture d&apos;écran de ta transaction pour confirmer.
+                  </p>
+                </div>
+              )}
+
+              {paymentMethod === 'cash' && (
+                <div className="mt-5 max-w-sm mx-auto rounded-lg border border-gold/30 bg-gold/5 p-4 text-left">
+                  <p className="font-display font-semibold text-sm text-ink mb-2">💬 Prochaine étape</p>
+                  <p className="text-sm text-muted font-light leading-relaxed">
+                    {settings.deliveryNote}
+                  </p>
                 </div>
               )}
 
@@ -443,11 +572,29 @@ export default function CommandePage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex items-end justify-between">
+
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between text-sm text-cream/70">
+                  <span>Sous-total</span>
+                  <span className="font-display font-semibold text-cream">{formatUSD(subtotal)}</span>
+                </div>
+                {isMM && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gold/80">Frais de retrait MM</span>
+                    <span className="font-display font-semibold text-gold">
+                      + {formatCDF(settings.withdrawalFeeCDF)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-cream/10 flex items-end justify-between">
                 <span className="font-display text-xs tracking-widest uppercase text-cream/60">Total</span>
                 <div className="text-right">
                   <div className="font-display font-extrabold text-2xl text-cream">{formatUSD(subtotal)}</div>
-                  <div className="text-gold font-display text-sm mt-0.5">≈ {formatCDF(usdToCdf(subtotal))}</div>
+                  <div className="text-gold font-display text-sm mt-0.5">
+                    ≈ {formatCDF(usdToCdf(subtotal))}{isMM ? ` + ${formatCDF(settings.withdrawalFeeCDF)}` : ''}
+                  </div>
                 </div>
               </div>
 

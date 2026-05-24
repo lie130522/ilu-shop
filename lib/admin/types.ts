@@ -55,6 +55,8 @@ export interface ChatMessageRecord {
   id: string;
   sender: 'client' | 'admin' | 'system';
   content: string;
+  mediaUrl?: string;           // Firebase Storage URL for image/video
+  mediaType?: 'image' | 'video';
   createdAt: string;
   readByAdmin?: boolean;
   readByClient?: boolean;
