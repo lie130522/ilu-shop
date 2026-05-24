@@ -210,7 +210,7 @@ export default function NouveauProduitPage() {
             <StepInfos form={form} set={set} tagInput={tagInput} setTagInput={setTagInput} />
           )}
           {step === 'variantes' && <StepVariantes form={form} set={set} />}
-          {step === 'medias' && <StepMedias form={form} set={set} />}
+          {step === 'medias' && <StepMedias form={form} set={set} onGeminiApplied={() => setStep('infos')} />}
           {step === 'pipeline' && <StepPipeline form={form} set={set} />}
           {step === 'publication' && (
             <StepPublication form={form} set={set} onPublish={handlePublish} saving={saving} />
@@ -574,13 +574,47 @@ function StepVariantes({
 function StepMedias({
   form,
   set,
+  onGeminiApplied,
 }: {
   form: FormState;
   set: <K extends keyof FormState>(k: K, v: FormState[K]) => void;
+  onGeminiApplied?: () => void;
 }) {
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [geminiLoading, setGeminiLoading] = useState(false);
+  const [geminiError, setGeminiError] = useState<string | null>(null);
+  const [geminiSuccess, setGeminiSuccess] = useState(false);
+
+  const generateWithGemini = async () => {
+    if (!form.images[0]) return;
+    setGeminiLoading(true);
+    setGeminiError(null);
+    setGeminiSuccess(false);
+    try {
+      const res = await fetch('/api/admin/media/describe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: form.images[0].originalDataUrl,
+          category: form.category,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+      if (data.name) set('name', data.name);
+      if (data.shortDescription) set('shortDescription', data.shortDescription);
+      if (data.description) set('description', data.description);
+      if (data.tags?.length) set('tags', data.tags);
+      setGeminiSuccess(true);
+      onGeminiApplied?.();
+    } catch (err) {
+      setGeminiError(String(err));
+    } finally {
+      setGeminiLoading(false);
+    }
+  };
 
   const readImageFile = (file: File): Promise<DraftImage> =>
     new Promise((resolve, reject) => {
@@ -688,6 +722,36 @@ function StepMedias({
           className="hidden"
           onChange={(e) => e.target.files && addImages(e.target.files)}
         />
+
+        {/* Gemini auto-generate */}
+        {form.images.length > 0 && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-terra/5 to-gold/5 border border-terra/20 rounded-xl flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-semibold text-sm text-ink">✨ Générer avec Gemini</p>
+              <p className="text-xs text-muted mt-0.5">
+                Gemini analysera la 1ère photo et remplira automatiquement le nom, les descriptions et les tags.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={generateWithGemini}
+              disabled={geminiLoading}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-terra text-cream font-display text-[11px] tracking-widest uppercase font-semibold hover:bg-terra-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            >
+              {geminiLoading ? (
+                <><span className="w-3.5 h-3.5 border-2 border-cream/40 border-t-cream rounded-full animate-spin" />Analyse…</>
+              ) : '✨ Générer'}
+            </button>
+            {geminiSuccess && (
+              <p className="w-full text-xs text-emerald-600 font-medium">
+                ✓ Nom, descriptions et tags remplis automatiquement ! Vérifie l'étape 1.
+              </p>
+            )}
+            {geminiError && (
+              <p className="w-full text-xs text-terra font-medium">⚠ {geminiError}</p>
+            )}
+          </div>
+        )}
 
         {/* Image grid */}
         {form.images.length > 0 && (

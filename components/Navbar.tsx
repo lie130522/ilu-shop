@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useShop } from './ShopProvider';
 import { CurrencyToggle } from './CurrencyToggle';
+import { useAuth } from './AuthProvider';
 
 const NAV_LINKS = [
   { href: '/', label: 'Accueil' },
@@ -15,6 +16,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const { cartCount, wishlist } = useShop();
+  const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -58,11 +60,18 @@ export function Navbar() {
             </button>
 
             <Link
-              href="/compte"
+              href={user ? '/compte' : '/connexion'}
               aria-label="Compte"
-              className="hidden md:flex w-10 h-10 items-center justify-center rounded-full border border-line text-ink hover:bg-beige transition-colors"
+              className="hidden md:flex w-10 h-10 items-center justify-center rounded-full border border-line text-ink hover:bg-beige transition-colors relative"
+              title={user ? `Connecté : ${user.displayName || user.email}` : 'Se connecter'}
             >
-              <UserIcon />
+              {user ? (
+                <span className="w-5 h-5 rounded-full bg-terra text-cream text-[10px] font-display font-bold flex items-center justify-center">
+                  {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                </span>
+              ) : (
+                <UserIcon />
+              )}
             </Link>
 
             <Link

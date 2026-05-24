@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useAdmin } from './AdminProvider';
 import { AdminSidebar } from './AdminSidebar';
 
-const PUBLIC_PREFIXES = ['/admin/login', '/admin/invitation'];
+const PUBLIC_PREFIXES = ['/admin/invitation'];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { ready, currentAdmin } = useAdmin();
@@ -17,7 +17,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     if (!isPublic && !currentAdmin) {
-      router.replace('/admin/login');
+      router.replace('/connexion');
     }
   }, [ready, currentAdmin, isPublic, router]);
 

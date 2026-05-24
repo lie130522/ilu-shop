@@ -8,8 +8,10 @@ import { ChatModal } from './ChatModal';
 export function ShopChrome({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const isAdmin = path?.startsWith('/admin');
+  // Pages full-screen sans Navbar/Footer (auth pages)
+  const isAuthPage = path === '/connexion';
 
-  if (isAdmin) return <>{children}</>;
+  if (isAdmin || isAuthPage) return <>{children}</>;
 
   return (
     <>

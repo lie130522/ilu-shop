@@ -19,11 +19,11 @@ function msg(
 }
 
 // Mock principal admin — seeded on first load
-// Demo credentials: admin@ilushop.cd / ilushop2026
+// Demo credentials: lievinkabamba1@gmail.com / ilushop2026
 export const SEED_PRINCIPAL_ADMIN: Admin = {
   id: 'adm-principal-001',
-  email: 'admin@ilushop.cd',
-  fullName: 'Lievin Mwamba',
+  email: 'lievinkabamba1@gmail.com',
+  fullName: 'Lievin Kabamba',
   role: 'admin_principal',
   permissions: ['catalog', 'orders', 'editorial', 'clients', 'exchange_rate', 'notifications'],
   createdAt: '2026-01-15T08:00:00Z',

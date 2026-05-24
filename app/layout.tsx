@@ -3,6 +3,7 @@ import { Syne, DM_Sans } from 'next/font/google';
 import './globals.css';
 import { ShopProvider } from '@/components/ShopProvider';
 import { ShopChrome } from '@/components/ShopChrome';
+import { AuthProvider } from '@/components/AuthProvider';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -28,9 +29,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className={`${syne.variable} ${dmSans.variable}`}>
       <body className="font-sans bg-cream text-ink min-h-screen flex flex-col">
-        <ShopProvider>
-          <ShopChrome>{children}</ShopChrome>
-        </ShopProvider>
+        <AuthProvider>
+          <ShopProvider>
+            <ShopChrome>{children}</ShopChrome>
+          </ShopProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,6 +1,8 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase/client';
 import {
   ADMIN_MAX,
   DEMO_PASSWORD,
@@ -52,7 +54,7 @@ interface AdminContextValue {
   rateUpdatedBy: string;
   // Auth
   login: (email: string, password: string) => Admin | AdminError;
-  logout: () => void;
+  logout: () => void | Promise<void>;
   // Admin / invitations
   totalAdminSlots: number; // active admins + pending invitations
   canInvite: boolean;
@@ -114,12 +116,34 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(SEED_PRODUCTS);
   const [exchangeRate, setExchangeRate] = useState<number>(2000);
   const [rateUpdatedAt, setRateUpdatedAt] = useState<string>('2026-05-22T14:00:00Z');
-  const [rateUpdatedBy, setRateUpdatedBy] = useState<string>('Lievin Mwamba');
+  const [rateUpdatedBy, setRateUpdatedBy] = useState<string>('Lievin Kabamba');
   const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
 
   // Hydrate from localStorage
   useEffect(() => {
-    setAdmins(loadFromStorage<Admin[]>(STORAGE.admins, [SEED_PRINCIPAL_ADMIN]));
+    // ── Re-seed si le principal admin a changé (email ou nom) ──────────────
+    const storedAdmins = loadFromStorage<Admin[]>(STORAGE.admins, [SEED_PRINCIPAL_ADMIN]);
+    const storedPrincipal = storedAdmins.find((a) => a.role === 'admin_principal');
+    const needsReseed =
+      !storedPrincipal ||
+      storedPrincipal.email !== SEED_PRINCIPAL_ADMIN.email ||
+      storedPrincipal.fullName !== SEED_PRINCIPAL_ADMIN.fullName;
+
+    if (needsReseed) {
+      // Remplacer uniquement le principal admin, conserver les secondaires
+      const others = storedAdmins.filter((a) => a.role !== 'admin_principal');
+      const freshAdmins = [SEED_PRINCIPAL_ADMIN, ...others];
+      localStorage.setItem(STORAGE.admins, JSON.stringify(freshAdmins));
+      // Invalider la session si elle pointait vers l'ancien principal
+      const sessionId = loadFromStorage<string | null>(STORAGE.session, null);
+      if (sessionId === 'adm-principal-001') {
+        localStorage.removeItem(STORAGE.session);
+      }
+      setAdmins(freshAdmins);
+    } else {
+      setAdmins(storedAdmins);
+    }
+
     setInvitations(loadFromStorage<Invitation[]>(STORAGE.invitations, SEED_INVITATIONS));
     setClients(loadFromStorage<Client[]>(STORAGE.clients, SEED_CLIENTS));
     setOrders(loadFromStorage<OrderConversation[]>(STORAGE.orders, SEED_ORDERS));
@@ -127,7 +151,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     setProducts(loadFromStorage<Product[]>(STORAGE.products, SEED_PRODUCTS));
     const rateData = loadFromStorage<{ rate: number; updatedAt: string; updatedBy: string }>(
       STORAGE.rate,
-      { rate: 2000, updatedAt: '2026-05-22T14:00:00Z', updatedBy: 'Lievin Mwamba' },
+      { rate: 2000, updatedAt: '2026-05-22T14:00:00Z', updatedBy: 'Lievin Kabamba' },
     );
     setExchangeRate(rateData.rate);
     setRateUpdatedAt(rateData.updatedAt);
@@ -174,7 +198,34 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     else localStorage.removeItem(STORAGE.session);
   }, [currentAdmin, ready]);
 
-  // ─── Auth ────────────────────────────────────────────────
+  // ─── Firebase Auth → auto-login admin ───────────────────────────────────────
+  // Utilise une ref pour éviter les dépendances instables dans useEffect
+  const adminsRef = useRef(admins);
+  adminsRef.current = admins;
+
+  useEffect(() => {
+    if (!ready) return;
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser?.email) {
+        const matchingAdmin = adminsRef.current.find(
+          (a) => a.email.toLowerCase() === firebaseUser.email!.toLowerCase(),
+        );
+        if (matchingAdmin) {
+          const updated = { ...matchingAdmin, lastLogin: nowISO() };
+          setCurrentAdmin(updated);
+        } else {
+          // Utilisateur Firebase connecté mais pas admin → ne pas toucher à currentAdmin
+          // (pourrait être un client qui visite /admin directement)
+        }
+      } else {
+        // Déconnexion Firebase → vider la session admin
+        setCurrentAdmin(null);
+      }
+    });
+    return unsub;
+  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Auth (mock fallback pour compatibilité) ──────────────────────────────
   const login = useCallback(
     (email: string, password: string): Admin | AdminError => {
       const admin = admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
@@ -189,7 +240,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     [admins],
   );
 
-  const logout = useCallback(() => setCurrentAdmin(null), []);
+  const logout = useCallback(async () => {
+    setCurrentAdmin(null);
+    try { await firebaseSignOut(auth); } catch { /* ignore */ }
+  }, []);
 
   // ─── Admins & invitations ────────────────────────────────
   // Règle absolue : max 3 admins (actifs + invitations en attente non expirées)
