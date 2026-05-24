@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
+import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
 import { formatCDF, formatUSD } from '@/lib/currency';
 import { STATUS_LABEL, STATUS_TONE, type OrderStatus } from '@/lib/admin/types';
 import type { ChatMessageRecord } from '@/lib/admin/types';
@@ -167,6 +168,7 @@ export default function AdminOrdersPage() {
   const unreadCount = conversations.filter((o) => o.unreadCount > 0).length;
 
   if (!currentAdmin) return null;
+  if (!hasPermission(currentAdmin, 'orders')) return <PermissionDenied permission="orders" />;
 
   return (
     <>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { useAdmin } from '@/components/admin/AdminProvider';
+import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
 
 interface ScrapeResult {
   title: string;
@@ -42,6 +43,7 @@ export default function ImportsPage() {
   const [activeTab, setActiveTab] = useState<'scrape' | 'sources'>('scrape');
 
   if (!currentAdmin) return null;
+  if (!hasPermission(currentAdmin, 'catalog')) return <PermissionDenied permission="catalog" />;
 
   const handleScrape = async () => {
     if (!url.trim()) return;

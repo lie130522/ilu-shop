@@ -4,11 +4,11 @@ import { ProductCard } from '@/components/ProductCard';
 import { Marquee } from '@/components/Marquee';
 import { PriceDisplay } from '@/components/PriceDisplay';
 import { RecommendedSection, RecentlyViewedSection } from '@/components/RecommendedSection';
+import { BestSellersSection } from '@/components/BestSellersSection';
 
 export default function HomePage() {
   const featured = getFeaturedProducts();
   const heroProduct = featured[0] ?? PRODUCTS[0];
-  const bestSellers = PRODUCTS.filter((p) => (p.rating ?? 0) >= 4.6).slice(0, 8);
   const newArrivals = PRODUCTS.filter((p) => p.badge === 'new').slice(0, 3);
 
   return (
@@ -242,7 +242,7 @@ export default function HomePage() {
               Une sélection humaine, un chat humain, une livraison humaine.
             </p>
             <Link
-              href="#"
+              href="/a-propos"
               className="inline-flex items-center gap-3 mt-10 font-display text-xs font-semibold tracking-[0.25em] uppercase text-cream border-b border-cream pb-1 hover:text-terra-light hover:border-terra-light transition-colors"
             >
               Notre démarche →
@@ -281,37 +281,7 @@ export default function HomePage() {
       />
 
       {/* ━━━━━━━━━━━━━ BEST SELLERS ━━━━━━━━━━━━━ */}
-      <section className="py-24 bg-bone">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
-            <div>
-              <span className="font-display text-[10px] tracking-[0.35em] uppercase text-terra font-semibold">
-                — Best Sellers
-              </span>
-              <h2 className="mt-3 font-display font-bold text-4xl md:text-5xl text-ink">
-                Les préférés.
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-display text-[11px] tracking-widest uppercase text-muted">
-                Trier
-              </span>
-              <select className="bg-cream border border-line rounded-full px-4 py-2 text-xs font-medium outline-none cursor-pointer">
-                <option>Popularité</option>
-                <option>Nouveautés</option>
-                <option>Prix croissant</option>
-                <option>Prix décroissant</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12">
-            {bestSellers.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </div>
-      </section>
+      <BestSellersSection />
 
       {/* ━━━━━━━━━━━━━ HERO PRODUIT SECONDAIRE (LOCO style) ━━━━━━━━━━━━━ */}
       <SecondaryHero product={featured[1] ?? PRODUCTS[1]} />

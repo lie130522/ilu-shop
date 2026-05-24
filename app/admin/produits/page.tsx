@@ -6,6 +6,7 @@ import { useAdmin } from '@/components/admin/AdminProvider';
 import { getAdminProducts, updateAdminProductStatus, type StoredProduct } from '@/lib/admin/product-store';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { formatUSD } from '@/lib/currency';
+import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
 
 export default function AdminProductsPage() {
   const { products: seedProducts, toggleFeatured, toggleProductActive, currentAdmin } = useAdmin();
@@ -16,6 +17,7 @@ export default function AdminProductsPage() {
   const refresh = () => setTick((t) => t + 1);
 
   if (!currentAdmin) return null;
+  if (!hasPermission(currentAdmin, 'catalog')) return <PermissionDenied permission="catalog" />;
 
   // Merge seed products + admin-created products (admin products first, newest on top)
   const adminCreated = typeof window !== 'undefined' ? getAdminProducts() : [];

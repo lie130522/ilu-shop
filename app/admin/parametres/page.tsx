@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { useAdmin } from '@/components/admin/AdminProvider';
+import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
 import { getShopSettings, saveShopSettings, DEFAULT_SETTINGS } from '@/lib/firebase/settings';
 import type { ShopSettings } from '@/lib/firebase/settings';
 
@@ -18,6 +19,7 @@ export default function ParametresPage() {
   }, []);
 
   if (!currentAdmin) return null;
+  if (!hasPermission(currentAdmin, 'admin_principal')) return <PermissionDenied permission="admin_principal" />;
 
   const update = (path: string, value: string | number | boolean) => {
     setSettings((prev) => {

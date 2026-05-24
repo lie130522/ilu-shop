@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useShop } from './ShopProvider';
 import { PriceDisplay } from './PriceDisplay';
 import type { Product } from '@/lib/types';
@@ -32,14 +33,24 @@ export function ProductCard({ product }: { product: Product }) {
             <div className="w-3/4 aspect-square rounded-full bg-beige/60 blur-2xl group-hover:bg-terra-light/40 transition-colors duration-700" />
           </div>
 
-          {/* Image */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={product.images[0]}
-            alt={product.name}
-            loading="lazy"
-            className="relative z-10 w-full h-full object-cover transition-transform duration-700 ease-smooth group-hover:scale-105"
-          />
+          {/* Image — base64 data URLs (admin uploads) use <img>, remote URLs use <Image> */}
+          {product.images[0]?.startsWith('data:') ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={product.images[0]}
+              alt={product.name}
+              loading="lazy"
+              className="relative z-10 w-full h-full object-cover transition-transform duration-700 ease-smooth group-hover:scale-105"
+            />
+          ) : (
+            <Image
+              src={product.images[0] ?? '/placeholder.png'}
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 50vw, 25vw"
+              className="object-cover transition-transform duration-700 ease-smooth group-hover:scale-105"
+            />
+          )}
 
           {/* Badge */}
           {product.badge && (

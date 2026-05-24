@@ -4,12 +4,14 @@ import { useState, useMemo } from 'react';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { formatUSD } from '@/lib/currency';
+import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
 
 export default function AdminClientsPage() {
   const { clients, currentAdmin } = useAdmin();
   const [search, setSearch] = useState('');
 
   if (!currentAdmin) return null;
+  if (!hasPermission(currentAdmin, 'clients')) return <PermissionDenied permission="clients" />;
 
   const filtered = useMemo(
     () =>

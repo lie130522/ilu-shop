@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import type { NotificationType } from '@/lib/admin/types';
+import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
 
 const TYPE_LABEL: Record<NotificationType, string> = {
   new_message: 'Message',
@@ -25,6 +26,7 @@ export default function AdminNotificationsPage() {
   const [filter, setFilter] = useState<'all' | NotificationType | 'unread'>('all');
 
   if (!currentAdmin) return null;
+  if (!hasPermission(currentAdmin, 'notifications')) return <PermissionDenied permission="notifications" />;
 
   const filtered = notifications.filter((n) => {
     if (filter === 'all') return true;

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
+import { PermissionGuard } from '@/components/admin/PermissionGuard';
 import { formatCDF } from '@/lib/currency';
 
 export default function AdminRatePage() {
@@ -14,7 +15,9 @@ export default function AdminRatePage() {
 
   if (!currentAdmin) return null;
 
-  const canEdit = currentAdmin.permissions.includes('exchange_rate');
+  const canEdit =
+    currentAdmin.role === 'admin_principal' ||
+    currentAdmin.permissions.includes('exchange_rate');
   const rate = Number(newRate);
   const isValid = !isNaN(rate) && rate >= 500 && rate <= 10000;
   const hasChanged = rate !== exchangeRate;
@@ -33,7 +36,8 @@ export default function AdminRatePage() {
   };
 
   return (
-    <>
+    <PermissionGuard permission="exchange_rate">
+      <>
       <AdminTopBar
         title="Taux de change USD → CDF"
         subtitle="Modifier le taux affiché sur toute la boutique"
@@ -132,7 +136,8 @@ export default function AdminRatePage() {
           </div>
         )}
       </div>
-    </>
+      </>
+    </PermissionGuard>
   );
 }
 

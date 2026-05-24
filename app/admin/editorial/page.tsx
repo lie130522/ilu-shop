@@ -3,10 +3,12 @@
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { formatUSD } from '@/lib/currency';
+import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
 
 export default function AdminEditorialPage() {
   const { products, toggleFeatured, currentAdmin } = useAdmin();
   if (!currentAdmin) return null;
+  if (!hasPermission(currentAdmin, 'editorial')) return <PermissionDenied permission="editorial" />;
 
   const featured = products.filter((p) => p.status === 'featured');
   const candidates = products.filter((p) => p.status === 'active' && p.stock > 0);

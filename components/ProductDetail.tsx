@@ -9,8 +9,81 @@ import { USD_TO_CDF_RATE } from '@/lib/currency';
 import { trackView, trackCartAdd, trackWishlist, addRecentlyViewed } from '@/lib/tracking';
 import type { Product } from '@/lib/types';
 
+// ── P24 — Guide des tailles ───────────────────────────────────────────────────
+const MODE_SIZES = [
+  { taille: 'XS',  fr: '34–36', poitrine: '80–84', taille_cm: '60–64', hanches: '86–90' },
+  { taille: 'S',   fr: '36–38', poitrine: '84–88', taille_cm: '64–68', hanches: '90–94' },
+  { taille: 'M',   fr: '38–40', poitrine: '88–92', taille_cm: '68–72', hanches: '94–98' },
+  { taille: 'L',   fr: '40–42', poitrine: '92–96', taille_cm: '72–76', hanches: '98–102' },
+  { taille: 'XL',  fr: '42–44', poitrine: '96–100', taille_cm: '76–80', hanches: '102–106' },
+  { taille: 'XXL', fr: '44–46', poitrine: '100–108', taille_cm: '80–88', hanches: '106–114' },
+];
+const TECH_SIZES = [
+  { stockage: '64 Go',  usage: 'Usage courant, apps essentielles' },
+  { stockage: '128 Go', usage: 'Recommandé — photos, apps, musique' },
+  { stockage: '256 Go', usage: 'Utilisation intensive, vidéos 4K' },
+  { stockage: '512 Go', usage: 'Pro, stockage maximal' },
+];
+
+function SizeGuideModal({ category, onClose }: { category: string; onClose: () => void }) {
+  const isTech = category !== 'mode';
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button type="button" aria-label="Fermer" onClick={onClose}
+        className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" />
+      <div className="relative bg-cream rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-fadeUp">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display font-bold text-lg text-ink">Guide des tailles</h2>
+          <button type="button" onClick={onClose}
+            className="w-8 h-8 rounded-full hover:bg-bone flex items-center justify-center text-muted transition-colors">
+            ✕
+          </button>
+        </div>
+        {isTech ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted font-light mb-3">Capacité de stockage interne.</p>
+            {TECH_SIZES.map((row) => (
+              <div key={row.stockage} className="flex items-center gap-4 bg-bone rounded-md px-4 py-3">
+                <span className="font-display font-bold text-sm text-ink w-20 shrink-0">{row.stockage}</span>
+                <span className="text-xs text-muted font-light">{row.usage}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <p className="text-xs text-muted font-light mb-3">Mesures en cm. En cas de doute, prenez la taille supérieure.</p>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-ink text-cream">
+                  {['Taille','FR','Poitrine','Taille','Hanches'].map((h) => (
+                    <th key={h} className="px-3 py-2 font-display font-semibold tracking-widest uppercase text-center first:text-left">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {MODE_SIZES.map((row) => (
+                  <tr key={row.taille} className="hover:bg-bone transition-colors">
+                    <td className="px-3 py-2 font-display font-bold text-ink">{row.taille}</td>
+                    <td className="px-3 py-2 text-center text-muted">{row.fr}</td>
+                    <td className="px-3 py-2 text-center">{row.poitrine}</td>
+                    <td className="px-3 py-2 text-center">{row.taille_cm}</td>
+                    <td className="px-3 py-2 text-center">{row.hanches}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="mt-4 text-[10px] text-muted font-light">
+          Mesures indicatives. Des questions ? Demandez-nous dans le chat. 💬
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function ProductDetail({ product }: { product: Product }) {
-  const { addToCart, openChat, wishlist, toggleWishlist } = useShop();
+  const { addToCart, openChat, wishlist, toggleWishlist, rateUpdatedAt } = useShop();
   const { user } = useAuth();
   const [activeImage, setActiveImage] = useState(0);
   const [size, setSize] = useState<string | undefined>(product.sizes?.[0]);
@@ -18,6 +91,7 @@ export function ProductDetail({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState<'description' | 'specs' | 'shipping'>('description');
   const [added, setAdded] = useState(false);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false); // P24
 
   const isWished = wishlist.includes(product.id);
 
@@ -47,6 +121,13 @@ export function ProductDetail({ product }: { product: Product }) {
 
   return (
     <>
+      {/* P24 — Modal guide des tailles */}
+      {sizeGuideOpen && (
+        <SizeGuideModal
+          category={product.category}
+          onClose={() => setSizeGuideOpen(false)}
+        />
+      )}
       {/* Breadcrumb */}
       <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-8">
         <nav className="font-display text-[11px] tracking-widest uppercase text-muted flex items-center gap-2">
@@ -172,6 +253,16 @@ export function ProductDetail({ product }: { product: Product }) {
               <PriceDisplay usd={product.priceUSD} oldUsd={product.oldPriceUSD} size="xl" />
               <p className="mt-3 text-[11px] text-muted font-light">
                 Taux indicatif : 1 USD ≈ {USD_TO_CDF_RATE.toLocaleString('fr-FR')} FC
+                {rateUpdatedAt && (
+                  <span className="ml-1">
+                    · Mis à jour le{' '}
+                    {new Date(rateUpdatedAt).toLocaleDateString('fr-FR', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </span>
+                )}
               </p>
             </div>
 
@@ -219,7 +310,7 @@ export function ProductDetail({ product }: { product: Product }) {
                   <span className="font-display text-[11px] tracking-widest uppercase font-semibold">
                     Taille
                   </span>
-                  <button className="text-xs text-terra underline">Guide des tailles</button>
+                  <button type="button" onClick={() => setSizeGuideOpen(true)} className="text-xs text-terra underline hover:text-terra-dark transition-colors">Guide des tailles</button>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {product.sizes.map((s) => {

@@ -46,7 +46,7 @@
 - **Problème** : Les pages individuelles (`/admin/taux`, `/admin/editorial`, etc.) ne vérifient pas `currentAdmin.permissions`. Seule la sidebar masque les liens — mais l'URL directe fonctionne.
 - **Impact** : Un admin secondaire sans permission `exchange_rate` peut modifier le taux via `/admin/taux` directement.
 - **Fix** : Ajouter un hook `useRequirePermission('nom_permission')` en haut de chaque page admin protégée.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `components/admin/PermissionGuard.tsx` créé (`hasPermission`, `PermissionDenied`, `PermissionGuard`). Les 8 pages admin (`taux`, `clients`, `editorial`, `notifications`, `commandes`, `imports`, `parametres`, `produits`) vérifient la permission et affichent un écran 🔒 en cas de refus.
 
 ---
 
@@ -172,18 +172,18 @@
 - **Problème** : Lors de la création d'une invitation admin, le lien est affiché à l'écran mais aucun email n'est envoyé (Resend est installé mais non câblé pour les invitations).
 - **Impact** : L'admin principal doit copier/coller manuellement le lien. Si il oublie ou ferme la page = lien perdu.
 - **Fix** : Créer l'API route `/api/admin/invite` qui appelle Resend avec le template d'invitation.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — API route `app/api/admin/invite/route.ts` créée. Template HTML brandé (terra #C8573A). Émetteur `onboarding@resend.dev` (compatible plan gratuit Resend). `app/admin/equipe/page.tsx` mis à jour avec état d'envoi et spinner.
 
 ### P22 🟡 Réponses automatiques du chat sans indication qu'elles sont automatiques
 - **Problème** : `ChatModal.tsx` envoie des réponses aléatoires après 1.9s signées "ILU SHOP", donnant l'impression d'une vraie réponse humaine.
 - **Impact** : Tromperie involontaire du client. Risque légal.
 - **Fix** : Supprimer les réponses auto ou ajouter "⚡ Réponse automatique — un agent reprendra bientôt".
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Résolu (décision produit) — l'équipe a choisi de garder le comportement actuel avec le sender `'admin'` explicite. Pas de changement de code nécessaire.
 
 ### P23 🟡 Race condition wishlist — articles ajoutés localement perdus à la sync Firestore
 - **Problème** : Si l'utilisateur ajoute un article à la wishlist avant que la sync Firestore se termine, la wishlist locale est écrasée par celle de Firestore.
 - **Fix** : Effectuer un merge (union) des deux listes avant d'écraser l'état local.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `mergeWishlist(uid, localIds)` ajoutée dans `lib/firebase/db.ts` (utilise `arrayUnion` Firestore). `ShopProvider.tsx` exécute le merge avant de s'abonner au listener Firestore à chaque connexion.
 
 ---
 
@@ -195,44 +195,44 @@
 - **Fichier** : `components/ProductDetail.tsx`
 - **Problème** : `<button>Guide des tailles</button>` sans `onClick`. Ne fait rien.
 - **Fix** : Implémenter un modal ou supprimer le bouton.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — Modal `SizeGuideModal` ajouté dans `ProductDetail.tsx`. Tableau Mode (XS→XXL, FR + mensurations) et tableau Tech (stockages) selon la catégorie produit. `sizeGuideOpen` state câblé sur le bouton.
 
 ### P25 🟡 Lien "Notre démarche" vide
 - **Fichier** : `app/page.tsx`
 - **Problème** : `<Link href="#">Notre démarche →</Link>` pointe vers nulle part.
 - **Fix** : Créer la page `/a-propos` ou supprimer le lien.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — Page `app/a-propos/page.tsx` créée (hero MADE IN KIN, section valeurs, manifesto, approche en 3 étapes, CTA). Lien dans `app/page.tsx` mis à jour : `href="/a-propos"`.
 
 ### P26 🟡 Select de tri sur la page d'accueil non fonctionnel
 - **Fichier** : `app/page.tsx`
 - **Problème** : Le menu déroulant "Popularité / Prix..." n'a aucun `onChange`. Décoration uniquement.
 - **Fix** : Implémenter le tri ou supprimer le select.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `components/BestSellersSection.tsx` créé (`'use client'`). Tri fonctionnel : Popularité (par rating), Nouveautés (badge `new` en premier), Prix croissant / décroissant. Section remplacée dans `app/page.tsx`.
 
 ### P27 🟡 Bouton de recherche dans la Navbar sans fonctionnalité
 - **Fichier** : `components/Navbar.tsx`
 - **Problème** : L'icône de recherche est cliquable mais n'ouvre rien.
 - **Fix** : Implémenter une barre de recherche (modal ou expansion) ou masquer le bouton.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — Modal de recherche implémenté dans `Navbar.tsx`. Filtre temps réel sur `PRODUCTS` (name, shortDescription, tags ; min 2 chars, max 6 résultats). Auto-focus à l'ouverture, fermeture par Escape ou clic backdrop. Suggestions populaires affichées par défaut.
 
 ### P28 🟡 Lien "Favoris" dans la navbar redirige sans contexte si non connecté
 - **Fichier** : `components/Navbar.tsx`
 - **Problème** : `<Link href="/compte#wishlist">` redirige vers `/connexion` sans explication. Le hash `#wishlist` est perdu dans la redirection.
 - **Fix** : Afficher un tooltip "Connectez-vous pour voir vos favoris" ou rediriger vers `/catalogue`.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — Favoris conditionnel dans `Navbar.tsx`. Si connecté : lien `/compte#wishlist`. Si non connecté : lien `/connexion?redirect=/compte%23wishlist` + tooltip CSS `group-hover:opacity-100` "Connectez-vous pour accéder à vos favoris".
 
 ### P29 🟡 Taux de change affiché sur les fiches produits avec date figée
 - **Fichier** : `components/ProductDetail.tsx` + `lib/currency.ts`
 - **Problème** : `RATE_UPDATED_AT = '24/05/2026'` codé en dur. Affiche une date statique qui ne change jamais.
 - **Fix** : Lire la date de mise à jour depuis Firestore `shop_settings/default.updatedAt`.
-- **Statut** : ⬜ À faire (dépend du Groupe 3 — unification taux)
+- **Statut** : ✅ Corrigé — `ProductDetail.tsx` utilise `rateUpdatedAt` de `useShop()`. Affiche la date Firestore formatée (`toLocaleDateString('fr-FR')`) quand disponible. Tombe en `undefined` en cas d'absence.
 
 ### P30 🟡 Toutes les images `<img>` au lieu de `<Image>` Next.js
 - **Fichiers** : `app/page.tsx`, `components/ProductDetail.tsx`, `components/ProductCard.tsx`, etc.
 - **Problème** : Le composant `<Image>` de Next.js (optimisation automatique WebP, lazy loading, responsive) n'est pas utilisé. Images pleine résolution chargées sur mobile.
 - **Impact** : Site lent, mauvais score Google PageSpeed, LCP dégradé.
 - **Fix** : Migrer `<img>` → `<Image>` Next.js progressivement. Ajouter les hostnames dans `next.config.js`.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `next.config.js` : hostnames Firebase Storage ajoutés (`firebasestorage.googleapis.com`, `storage.googleapis.com`). `ProductCard.tsx` migré vers `<Image fill>` avec logique conditionnelle (data URL base64 → `<img>`, URL distante → `<Image>`). Images décorative hero et CategoryCard conservées en `<img>` (layout complexe `object-contain` + animations).
 
 ---
 
@@ -240,12 +240,12 @@
 
 | Statut | Nombre |
 |--------|--------|
-| 🔴 Critiques | 8 |
-| 🟠 Importants | 9 |
+| 🔴 Critiques | 9 |
+| 🟠 Importants | 13 |
 | 🟡 Mineurs | 7 |
-| **Total** | **24** |
-| ✅ Corrigés | **8** (P01, P02, P03, P04, P05, P06, P07, P10) |
-| ⬜ Restants | **16** (P09, P11–P30 sauf P10) |
+| **Total** | **29** |
+| ✅ Corrigés | **19** (P01–P07, P09, P10, P21–P30) |
+| ⬜ Restants | **10** (P11, P12, P13, P14, P15, P16, P17, P18, P19, P20) |
 
 ---
 
