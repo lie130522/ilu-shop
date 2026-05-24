@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-cream: #FBF7F2;
+  --color-bone: #F5EFE6;
+  --color-beige: #E8DDD0;
+  --color-terra: #C8573A;
+  --color-terra-light: #E8956D;
+  --color-gold: #D4A84B;
+  --color-ink: #1C1410;
+  --color-muted: #8A7060;
+}
+
+html, body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--color-terra);
+  color: white;
+}
+
+/* Smooth focus rings */
+*:focus-visible {
+  outline: 2px solid var(--color-terra);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bone);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-beige);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-terra-light);
+}
+
+/* Utility: editorial gradient background for hero circles */
+.bg-radial-terra {
+  background: radial-gradient(circle at center, #E8956D 0%, #C8573A 60%, #9B3E28 100%);
+}
+.bg-radial-beige {
+  background: radial-gradient(circle at center, #E8DDD0 0%, #D4C4B0 100%);
+}
+
+/* Marquee */
+.marquee-track {
+  display: flex;
+  width: max-content;
+}

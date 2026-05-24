@@ -1,0 +1,25 @@
+La bonne architecture logiciel est souvent contre intuitive (c'est peut-être pour ça qu'on a du mal à l’assimiler ou à l’appréhender).
+
+Voici un exemple :
+Un grand nombre de projets de développement commencent par un raffinement au millimètre près (schéma parfaitement pensé, 
+modèles ultra détaillés, décisions techniques prises très tôt…). Et honnêtement, cela donne un énorme sentiment de maîtrise du projet.
+
+Mais je peux vous garantir une chose, c’est probablement l’une des plus grosses erreurs que beaucoup de projets commettent.
+
+Même Martin Fowler le dit :
+“Aussi sûrs que soient nos principes de fonctionnement, nous pouvons toujours nous tromper, d'autant plus que nous ne disposons pas encore d'exigences détaillées. Travailler sur une mauvaise solution dès le début est encore plus coûteux que de travailler sur la bonne solution dès le début.”
+
+
+L’être humain cherche naturellement à garder le contrôle. Mais le contrôle repose sur l’information. Ainsi, en développement logiciel, beaucoup de décisions sont prises prématurément, simplement pour réduire l’incertitude.
+
+Mais pourtant au début d’un projet nous manquons souvent d’informations, d’exigences claires, de recul, et parfois même d’une vraie compréhension du métier.
+
+C’est là que beaucoup d’équipes tombent dans le piège à vouloir avoir un produit parfait dès le départ. Et viennent des discussions : (On ne peut plus changer cette feature. Revenir en arrière va casser l’existant. Supprimer ça est trop risqué.)
+
+
+Et là on comprend qu'une bonne architecture n’est pas là pour empêcher le changement, mais évolue avec le produit, les besoins, le métier et notre compréhension progressive du problème. En cherchant surtout à repousser certaines décisions jusqu’à avoir plus d’informations ou prendre les décisions d’une manière qui permettra de revenir dessus facilement plus tard.
+
+Autrement dit, une bonne architecture protège ta capacité à changer. La bonne architecture te dit, “Vas-y, commence, ce n’est pas grave si tu te trompes. Je suis là, je te couvre.” (TDD). "Ne te préoccupe pas encore de la persistance.” (Inversion de contrôle). "Concentre toi d’abord sur le métier.”
+(DDD)
+
+La solution n’est donc pas de “tout prévoir”. Mais de manière contre intuitive , commencer simple avec beaucoup d'incertitude, et parfois même en se trompant.

@@ -1,0 +1,224 @@
+# INSTRUCTIONS PROJET — PLATEFORME E-COMMERCE MULTI-CATÉGORIES
+> Instructions de référence pour Claude Code. À conserver à la racine du projet.
+
+---
+
+## 1. VISION GÉNÉRALE DU PROJET
+
+Développer une plateforme e-commerce moderne et complète proposant :
+- **Mode** : vêtements (toutes catégories), chaussures, vestes, accessoires
+- **High-tech** : téléphones, ordinateurs, tablettes
+- **Système éditorial** : section « À la une » pour la mise en avant de produits sélectionnés
+
+La plateforme comporte deux espaces distincts : un **espace visiteur/client** et un **espace administration**.
+
+---
+
+## 2. ARCHITECTURE FONCTIONNELLE
+
+### 2.1 Catalogue produits
+
+- Catégories principales : Mode (vêtements homme/femme/enfant, chaussures, vestes, accessoires) et High-tech (téléphones, ordinateurs, tablettes)
+- Chaque produit possède : nom, description, prix, catégorie, sous-catégorie, tags, stock, médias (photos + vidéos), statut (actif/inactif/à la une)
+- Système de filtres et de recherche avancée côté frontend
+- Section **« À la une »** : mise en avant manuelle de produits sélectionnés par les administrateurs (carousel ou bannière hero sur la page d'accueil)
+
+### 2.2 Système d'importation de produits (tableau de bord admin)
+
+**Source 1 — Import depuis des sites externes (scraping/flux)**
+- L'administrateur peut enregistrer des **URLs sources** (sites fournisseurs ou partenaires)
+- Le système récupère automatiquement les contenus (titre, description, images, prix) depuis ces sources
+- Interface de prévisualisation avant publication
+- Planification possible (import récurrent ou manuel)
+- Mapping des champs source → champs internes
+
+**Source 2 — Import manuel par l'administrateur**
+- Upload de **photos** (JPEG, PNG, WebP) et de **vidéos** (MP4, MOV)
+- Formulaire complet de saisie des informations produit
+- Éditeur de description riche (WYSIWYG)
+- Gestion de galerie : réorganisation, recadrage, suppression
+- Barre de progression pour les uploads volumineux
+
+---
+
+## 3. GESTION DES UTILISATEURS
+
+### 3.1 Visiteurs non connectés
+
+- Navigation libre dans le catalogue
+- Accès aux fiches produits complètes
+- **Tracking comportemental anonyme** : pages visitées, catégories consultées, temps passé, clics sur produits (via cookie de session ou fingerprint non intrusif)
+- Invitation à s'inscrire pour profiter des recommandations personnalisées
+
+### 3.2 Clients inscrits (espace personnel)
+
+**Inscription / Connexion**
+- Formulaire d'inscription classique (email + mot de passe) avec confirmation par email
+- Connexion via email/mot de passe
+- Récupération de mot de passe par email
+
+**Espace client**
+- Tableau de bord personnel : commandes en cours, historique, favoris
+- Profil : informations personnelles, adresses de livraison
+- Liste de souhaits (wishlist)
+- Paramètres de confidentialité et de notifications
+
+**Moteur de recommandation personnalisé**
+- Enregistrement des habitudes : articles consultés, ajoutés au panier, achetés, likés
+- Algorithme de suggestion basé sur l'historique individuel et les tendances globales
+- Affichage de sections « Recommandés pour vous » et « Récemment consultés »
+- Possibilité pour l'utilisateur de voir et de supprimer son historique
+
+### 3.3 Commandes et paiement
+
+- Panier persistant (sauvegardé entre sessions pour les connectés)
+- Processus de commande en étapes claires (panier → livraison → paiement → confirmation)
+- Suivi de commande dans l'espace client
+
+---
+
+## 4. SYSTÈME D'ADMINISTRATION
+
+### 4.1 Hiérarchie des administrateurs
+
+| Rôle | Nombre max | Permissions |
+|---|---|---|
+| Administrateur principal | 1 | Accès total, gestion des autres admins |
+| Administrateur secondaire | 2 (max) | Rôles attribués par l'admin principal |
+
+**Règle absolue** : Le nombre total d'administrateurs ne peut jamais dépasser **3**. Toute tentative de création d'un 4e compte administrateur doit être bloquée par le système, côté serveur comme côté client.
+
+### 4.2 Processus de création d'un compte administrateur secondaire
+
+1. L'administrateur principal saisit l'**adresse email** du futur administrateur dans le tableau de bord
+2. Il lui attribue un **rôle spécifique** parmi les rôles disponibles (ex : gestion catalogue, gestion commandes, gestion contenu éditorial…)
+3. Le système envoie automatiquement à cet email un **lien d'invitation unique** avec une durée de validité (ex : 48h)
+4. Le destinataire clique sur le lien et crée son mot de passe
+5. Son compte est activé avec le rôle d'**administrateur délégué**
+6. Le lien expire après utilisation ou après le délai imparti
+
+### 4.3 Tableau de bord administrateur
+
+**Modules disponibles selon les rôles :**
+
+- **Catalogue** : ajout, édition, suppression de produits ; gestion des catégories et des tags
+- **Importation** : gestion des sources externes, import manuel (photos/vidéos), file d'attente et historique des imports
+- **Éditorial** : sélection des produits « À la une », gestion des bannières et du carousel
+- **Commandes** : liste, détails, changement de statut, remboursements
+- **Clients** : liste des comptes, consultation des profils, historique des achats
+- **Administrateurs** : invitation, attribution des rôles, révocation (admin principal uniquement)
+- **Statistiques** : trafic, ventes, produits les plus consultés, taux de conversion
+
+---
+
+## 5. STACK TECHNIQUE RECOMMANDÉE
+
+> À adapter selon les choix définitifs de l'équipe. Ces recommandations sont un point de départ cohérent.
+
+| Couche | Technologie suggérée |
+|---|---|
+| Frontend | Next.js (React) + Tailwind CSS |
+| Backend / API | Node.js + Express ou Next.js API Routes |
+| Base de données | PostgreSQL (données structurées) + Redis (cache, sessions) |
+| Stockage médias | AWS S3 ou équivalent (Cloudflare R2, Supabase Storage) |
+| Authentification | NextAuth.js ou JWT maison |
+| Emails transactionnels | Resend, SendGrid ou Postmark |
+| Paiement | Stripe |
+| Déploiement | Vercel (frontend) + Railway/Render (backend) |
+
+---
+
+## 6. MODÈLE DE DONNÉES (ENTITÉS CLÉS)
+
+```
+User
+  id, email, password_hash, role (customer | admin_principal | admin_secondary),
+  admin_role_label (nullable), invited_by (nullable), created_at, last_login
+
+Product
+  id, name, description, price, category, subcategory, tags[],
+  status (active | inactive | featured), stock, created_at, updated_at
+
+ProductMedia
+  id, product_id, type (image | video), url, order, created_at
+
+ImportSource
+  id, name, url, type (external_site | manual), schedule, last_run, created_by
+
+Order
+  id, user_id, status, items[], total, shipping_address, payment_status, created_at
+
+UserBehavior
+  id, user_id (nullable), session_id, product_id, action (view | like | cart | purchase),
+  created_at
+
+AdminInvitation
+  id, email, role_label, token, expires_at, used_at, invited_by
+```
+
+---
+
+## 7. RÈGLES MÉTIER CRITIQUES
+
+1. **Limite 3 admins** : vérification côté serveur à chaque création de compte admin. Renvoyer une erreur explicite si la limite est atteinte.
+2. **Lien d'invitation unique** : un token cryptographiquement sûr (UUID v4 ou similaire), usage unique, expiration stricte.
+3. **« À la une »** : un produit ne peut être « à la une » que s'il est actif et en stock.
+4. **Médias** : valider les types et tailles de fichiers côté serveur, pas uniquement côté client.
+5. **RGPD** : le tracking comportemental doit être consenti (bandeau de cookies conforme) ; l'utilisateur connecté peut consulter et supprimer ses données comportementales.
+6. **Sécurité** : toutes les routes admin protégées par middleware d'authentification + vérification de rôle.
+
+---
+
+## 8. PAGES ET ROUTES PRINCIPALES
+
+### Frontend public
+- `/` — Accueil avec section « À la une » + recommandations
+- `/catalogue` — Catalogue avec filtres
+- `/categorie/[slug]` — Page de catégorie
+- `/produit/[slug]` — Fiche produit (photos, vidéo, description, avis)
+- `/panier` — Panier
+- `/commande` — Tunnel de commande
+- `/connexion` — Connexion / Inscription
+- `/compte` — Espace client (dashboard, commandes, profil, favoris)
+
+### Administration
+- `/admin` — Dashboard général (stats)
+- `/admin/produits` — Liste et gestion des produits
+- `/admin/produits/nouveau` — Ajout produit (import manuel)
+- `/admin/imports` — Gestion des sources et imports
+- `/admin/editorial` — Gestion de « À la une »
+- `/admin/commandes` — Gestion des commandes
+- `/admin/clients` — Gestion des comptes clients
+- `/admin/equipe` — Gestion des administrateurs (admin principal seulement)
+- `/admin/invitation/[token]` — Page d'activation du compte admin
+
+---
+
+## 9. PRIORITÉS DE DÉVELOPPEMENT (ordre suggéré)
+
+1. Authentification (inscription client, connexion, récupération MDP)
+2. Système d'invitation et gestion des admins (avec règle des 3 max)
+3. Catalogue produits + fiches produit
+4. Import manuel (photos/vidéos) via le dashboard admin
+5. Section « À la une » (sélection et affichage)
+6. Panier et tunnel de commande
+7. Espace client (historique, favoris, profil)
+8. Tracking comportemental + moteur de recommandation
+9. Import depuis sources externes
+10. Statistiques et analytics admin
+
+---
+
+## 10. NOTES POUR CLAUDE CODE
+
+- Toujours vérifier la règle des **3 administrateurs maximum** avant toute opération de création de compte admin.
+- Le token d'invitation admin doit être **à usage unique** : l'invalider immédiatement après activation.
+- Le tracking comportemental des visiteurs anonymes doit être **opt-in** (consentement cookies).
+- Les uploads de médias doivent passer par une **validation serveur** (type MIME, taille maximale).
+- Prévoir des **rôles granulaires** pour les admins secondaires dès la conception du modèle.
+- Les recommandations produits doivent fonctionner même sans achat (basées sur la navigation et les likes).
+- Le code doit être **modulaire** : chaque fonctionnalité dans son propre module/service.
+- Prévoir une **API RESTful** claire pour permettre une évolution future (app mobile, etc.).
+
+Toujours lire le fichier Instuctions avant de coder 
+Pose moi toujours des questions de compréhension avant de coder
