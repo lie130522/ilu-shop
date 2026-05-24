@@ -1,0 +1,29 @@
+rules_version = '2';
+// ─── Firebase Storage Security Rules — ILU SHOP ──────────────────────────────
+// Mis à jour : Groupe 2 — 24/05/2026
+// Buckets : chat-uploads (photos/vidéos de paiement Mobile Money)
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Fichiers chat (preuves de paiement Mobile Money) ─────────────────────
+    // Lecture publique : l'URL est partagée dans le fil de conversation.
+    // Écriture : limitée aux images/vidéos, taille max 50 Mo.
+    //   - Types autorisés : image/* (JPEG, PNG, WEBP, GIF) et video/* (MP4, MOV…)
+    //   - Taille max : 50 Mo (52 428 800 octets)
+    //   Note : la validation durée vidéo (≤ 30s) se fait côté client dans ChatModal.tsx
+    //          car Firebase Storage Rules ne peuvent pas inspecter les métadonnées vidéo.
+    match /chat-uploads/{convId}/{fileName} {
+      allow read: if true;
+      allow write: if request.resource.size < 52428800
+                   && request.resource.contentType.matches('image/.*|video/.*');
+    }
+
+    // ── Blocage par défaut ────────────────────────────────────────────────────
+    // Tout chemin non explicitement autorisé ci-dessus est bloqué.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+  }
+}

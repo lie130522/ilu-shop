@@ -1,0 +1,77 @@
+rules_version = '2';
+// ─── Firestore Security Rules — ILU SHOP ─────────────────────────────────────
+// Mis à jour : Groupe 2 — 24/05/2026
+// Collections : admins, users, shop_settings, product_stats, anonymous_behavior
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    // Vérifie si l'utilisateur connecté est dans la collection admins
+    function isAdmin() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Vérifie si l'utilisateur connecté est admin_principal
+    function isPrincipalAdmin() {
+      return request.auth != null &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin_principal';
+    }
+
+    // ── Admins ────────────────────────────────────────────────────────────────
+    // Chaque admin lit/écrit son propre document.
+    // Tout admin peut lire les autres (pour la page /admin/equipe).
+    // Seul le propriétaire du document peut créer/modifier son profil admin.
+    // La suppression est interdite côté client (uniquement via Firebase Console).
+    match /admins/{uid} {
+      allow read: if request.auth != null &&
+                     (request.auth.uid == uid || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // ── Utilisateurs ─────────────────────────────────────────────────────────
+    // Profil, wishlist, données : lecture/écriture réservées au propriétaire.
+    match /users/{uid}/data/{document} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Commandes : lecture/écriture réservées au propriétaire.
+    match /users/{uid}/orders/{orderId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Comportement (tracking) : écriture par le propriétaire, jamais lisible côté client.
+    match /users/{uid}/behavior/{eventId} {
+      allow write: if request.auth != null && request.auth.uid == uid;
+      allow read: if false;
+    }
+
+    // ── Paramètres boutique ───────────────────────────────────────────────────
+    // Lecture publique : les numéros MM et frais sont affichés à tous les clients.
+    // Écriture réservée à l'admin_principal (protection contre substitution de numéro MM).
+    match /shop_settings/{doc} {
+      allow read: if true;
+      allow write: if isPrincipalAdmin();
+    }
+
+    // ── Statistiques produits ─────────────────────────────────────────────────
+    // Lecture publique : utilisées pour les recommandations (produits populaires).
+    // Écriture publique : incrémentée par le tracking vues (à basculer Cloud Function).
+    match /product_stats/{productId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── Comportement anonyme ──────────────────────────────────────────────────
+    // Écriture publique : tracking sans compte (visiteurs non connectés).
+    // Lecture interdite côté client : données agrégées uniquement côté serveur.
+    match /anonymous_behavior/{doc} {
+      allow write: if true;
+      allow read: if false;
+    }
+
+  }
+}

@@ -3,14 +3,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
+import { bootstrapAdminIfNeeded, subscribeAdminByUid } from '@/lib/firebase/admins';
 import {
   ADMIN_MAX,
-  DEMO_PASSWORD,
   SEED_CLIENTS,
   SEED_INVITATIONS,
   SEED_NOTIFICATIONS,
   SEED_ORDERS,
-  SEED_PRINCIPAL_ADMIN,
 } from '@/lib/admin/seed';
 import type {
   Admin,
@@ -32,10 +31,19 @@ const STORAGE = {
   notifications: 'ilu_notifications',
   products: 'ilu_products',
   rate: 'ilu_exchange_rate',
-  session: 'ilu_admin_session',
 } as const;
 
-interface AdminError {
+// Cookie léger posé côté client pour le middleware (protection routes /admin/*)
+function setAdminCookie(value: boolean) {
+  if (typeof document === 'undefined') return;
+  if (value) {
+    document.cookie = '__ilu_admin=1; path=/; SameSite=Strict; max-age=86400';
+  } else {
+    document.cookie = '__ilu_admin=; path=/; max-age=0';
+  }
+}
+
+export interface AdminError {
   code: 'ADMIN_LIMIT' | 'EMAIL_EXISTS' | 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'TOKEN_USED' | 'UNAUTHORIZED';
   message: string;
 }
@@ -53,21 +61,12 @@ interface AdminContextValue {
   rateUpdatedAt: string;
   rateUpdatedBy: string;
   // Auth
-  login: (email: string, password: string) => Admin | AdminError;
   logout: () => void | Promise<void>;
   // Admin / invitations
-  totalAdminSlots: number; // active admins + pending invitations
+  totalAdminSlots: number;
   canInvite: boolean;
-  inviteAdmin: (
-    email: string,
-    permissions: AdminPermission[],
-  ) => Invitation | AdminError;
+  inviteAdmin: (email: string, permissions: AdminPermission[]) => Invitation | AdminError;
   revokeInvitation: (invitationId: string) => void;
-  acceptInvitation: (
-    token: string,
-    fullName: string,
-    password: string,
-  ) => Admin | AdminError;
   revokeAdmin: (adminId: string) => void;
   getInvitationByToken: (token: string) => Invitation | undefined;
   // Modules
@@ -108,7 +107,8 @@ function generateToken(): string {
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [admins, setAdmins] = useState<Admin[]>([SEED_PRINCIPAL_ADMIN]);
+  const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
+  const [admins, setAdmins] = useState<Admin[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>(SEED_INVITATIONS);
   const [clients, setClients] = useState<Client[]>(SEED_CLIENTS);
   const [orders, setOrders] = useState<OrderConversation[]>(SEED_ORDERS);
@@ -117,33 +117,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [exchangeRate, setExchangeRate] = useState<number>(2000);
   const [rateUpdatedAt, setRateUpdatedAt] = useState<string>('2026-05-22T14:00:00Z');
   const [rateUpdatedBy, setRateUpdatedBy] = useState<string>('Lievin Kabamba');
-  const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
 
-  // Hydrate from localStorage
+  // Hydrate non-auth data from localStorage
   useEffect(() => {
-    // ── Re-seed si le principal admin a changé (email ou nom) ──────────────
-    const storedAdmins = loadFromStorage<Admin[]>(STORAGE.admins, [SEED_PRINCIPAL_ADMIN]);
-    const storedPrincipal = storedAdmins.find((a) => a.role === 'admin_principal');
-    const needsReseed =
-      !storedPrincipal ||
-      storedPrincipal.email !== SEED_PRINCIPAL_ADMIN.email ||
-      storedPrincipal.fullName !== SEED_PRINCIPAL_ADMIN.fullName;
-
-    if (needsReseed) {
-      // Remplacer uniquement le principal admin, conserver les secondaires
-      const others = storedAdmins.filter((a) => a.role !== 'admin_principal');
-      const freshAdmins = [SEED_PRINCIPAL_ADMIN, ...others];
-      localStorage.setItem(STORAGE.admins, JSON.stringify(freshAdmins));
-      // Invalider la session si elle pointait vers l'ancien principal
-      const sessionId = loadFromStorage<string | null>(STORAGE.session, null);
-      if (sessionId === 'adm-principal-001') {
-        localStorage.removeItem(STORAGE.session);
-      }
-      setAdmins(freshAdmins);
-    } else {
-      setAdmins(storedAdmins);
-    }
-
     setInvitations(loadFromStorage<Invitation[]>(STORAGE.invitations, SEED_INVITATIONS));
     setClients(loadFromStorage<Client[]>(STORAGE.clients, SEED_CLIENTS));
     setOrders(loadFromStorage<OrderConversation[]>(STORAGE.orders, SEED_ORDERS));
@@ -156,97 +132,101 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     setExchangeRate(rateData.rate);
     setRateUpdatedAt(rateData.updatedAt);
     setRateUpdatedBy(rateData.updatedBy);
-
-    const sessionId = loadFromStorage<string | null>(STORAGE.session, null);
-    if (sessionId) {
-      const stored = loadFromStorage<Admin[]>(STORAGE.admins, [SEED_PRINCIPAL_ADMIN]);
-      const found = stored.find((a) => a.id === sessionId);
-      if (found) setCurrentAdmin(found);
-    }
-    setReady(true);
   }, []);
 
-  // Persist
+  // Persist non-auth data
   useEffect(() => {
-    if (ready) localStorage.setItem(STORAGE.admins, JSON.stringify(admins));
-  }, [admins, ready]);
+    if (typeof window !== 'undefined') localStorage.setItem(STORAGE.invitations, JSON.stringify(invitations));
+  }, [invitations]);
   useEffect(() => {
-    if (ready) localStorage.setItem(STORAGE.invitations, JSON.stringify(invitations));
-  }, [invitations, ready]);
+    if (typeof window !== 'undefined') localStorage.setItem(STORAGE.clients, JSON.stringify(clients));
+  }, [clients]);
   useEffect(() => {
-    if (ready) localStorage.setItem(STORAGE.clients, JSON.stringify(clients));
-  }, [clients, ready]);
+    if (typeof window !== 'undefined') localStorage.setItem(STORAGE.orders, JSON.stringify(orders));
+  }, [orders]);
   useEffect(() => {
-    if (ready) localStorage.setItem(STORAGE.orders, JSON.stringify(orders));
-  }, [orders, ready]);
+    if (typeof window !== 'undefined') localStorage.setItem(STORAGE.notifications, JSON.stringify(notifications));
+  }, [notifications]);
   useEffect(() => {
-    if (ready) localStorage.setItem(STORAGE.notifications, JSON.stringify(notifications));
-  }, [notifications, ready]);
+    if (typeof window !== 'undefined') localStorage.setItem(STORAGE.products, JSON.stringify(products));
+  }, [products]);
   useEffect(() => {
-    if (ready) localStorage.setItem(STORAGE.products, JSON.stringify(products));
-  }, [products, ready]);
-  useEffect(() => {
-    if (ready)
+    if (typeof window !== 'undefined') {
       localStorage.setItem(
         STORAGE.rate,
         JSON.stringify({ rate: exchangeRate, updatedAt: rateUpdatedAt, updatedBy: rateUpdatedBy }),
       );
-  }, [exchangeRate, rateUpdatedAt, rateUpdatedBy, ready]);
-  useEffect(() => {
-    if (!ready) return;
-    if (currentAdmin) localStorage.setItem(STORAGE.session, JSON.stringify(currentAdmin.id));
-    else localStorage.removeItem(STORAGE.session);
-  }, [currentAdmin, ready]);
+    }
+  }, [exchangeRate, rateUpdatedAt, rateUpdatedBy]);
 
-  // ─── Firebase Auth → auto-login admin ───────────────────────────────────────
-  // Utilise une ref pour éviter les dépendances instables dans useEffect
-  const adminsRef = useRef(admins);
-  adminsRef.current = admins;
+  // ─── Firebase Auth → Firestore admin lookup ──────────────────────────────────
+  const unsubAdminRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!ready) return;
-    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser?.email) {
-        const matchingAdmin = adminsRef.current.find(
-          (a) => a.email.toLowerCase() === firebaseUser.email!.toLowerCase(),
-        );
-        if (matchingAdmin) {
-          const updated = { ...matchingAdmin, lastLogin: nowISO() };
-          setCurrentAdmin(updated);
-        } else {
-          // Utilisateur Firebase connecté mais pas admin → ne pas toucher à currentAdmin
-          // (pourrait être un client qui visite /admin directement)
-        }
-      } else {
-        // Déconnexion Firebase → vider la session admin
+    const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Nettoyer l'ancien listener Firestore admin
+      unsubAdminRef.current?.();
+      unsubAdminRef.current = null;
+
+      if (!firebaseUser) {
         setCurrentAdmin(null);
+        setAdmins([]);
+        setAdminCookie(false);
+        setReady(true);
+        return;
       }
+
+      // Tenter le bootstrap (1ère connexion de l'admin principal)
+      const admin = await bootstrapAdminIfNeeded(
+        firebaseUser.uid,
+        firebaseUser.email ?? '',
+        firebaseUser.displayName ?? '',
+      );
+
+      if (!admin) {
+        // Utilisateur Firebase connecté mais pas admin
+        setCurrentAdmin(null);
+        setAdminCookie(false);
+        setReady(true);
+        return;
+      }
+
+      // Admin trouvé — s'abonner aux changements en temps réel
+      setCurrentAdmin(admin);
+      setAdmins([admin]);
+      setAdminCookie(true);
+
+      unsubAdminRef.current = subscribeAdminByUid(firebaseUser.uid, (updated) => {
+        if (updated) {
+          setCurrentAdmin(updated);
+          setAdmins((prev) => {
+            const others = prev.filter((a) => a.id !== updated.id);
+            return [updated, ...others];
+          });
+        } else {
+          setCurrentAdmin(null);
+          setAdmins([]);
+          setAdminCookie(false);
+        }
+      });
+
+      setReady(true);
     });
-    return unsub;
-  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Auth (mock fallback pour compatibilité) ──────────────────────────────
-  const login = useCallback(
-    (email: string, password: string): Admin | AdminError => {
-      const admin = admins.find((a) => a.email.toLowerCase() === email.toLowerCase());
-      if (!admin || admin.passwordHash !== `mock_hash_${password}`) {
-        return { code: 'UNAUTHORIZED', message: 'Email ou mot de passe incorrect.' };
-      }
-      const updated = { ...admin, lastLogin: nowISO() };
-      setAdmins((prev) => prev.map((a) => (a.id === admin.id ? updated : a)));
-      setCurrentAdmin(updated);
-      return updated;
-    },
-    [admins],
-  );
+    return () => {
+      unsubAuth();
+      unsubAdminRef.current?.();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Auth ─────────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     setCurrentAdmin(null);
+    setAdminCookie(false);
     try { await firebaseSignOut(auth); } catch { /* ignore */ }
   }, []);
 
-  // ─── Admins & invitations ────────────────────────────────
-  // Règle absolue : max 3 admins (actifs + invitations en attente non expirées)
+  // ─── Admins & invitations ────────────────────────────────────────────────────
   const activeInvitations = useMemo(
     () =>
       invitations.filter((inv) => {
@@ -262,12 +242,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const inviteAdmin = useCallback(
     (email: string, permissions: AdminPermission[]): Invitation | AdminError => {
       if (!currentAdmin || currentAdmin.role !== 'admin_principal') {
-        return { code: 'UNAUTHORIZED', message: 'Seul l\'admin principal peut inviter.' };
+        return { code: 'UNAUTHORIZED', message: "Seul l'admin principal peut inviter." };
       }
       if (totalAdminSlots >= ADMIN_MAX) {
         return {
           code: 'ADMIN_LIMIT',
-          message: `HTTP 409 — Limite atteinte : ${ADMIN_MAX} admins maximum (actifs + invitations en attente). Révoquez une invitation ou un admin avant d'inviter.`,
+          message: `Limite atteinte : ${ADMIN_MAX} admins maximum (actifs + invitations en attente). Révoquez une invitation avant d'inviter.`,
         };
       }
       const normalizedEmail = email.toLowerCase().trim();
@@ -275,10 +255,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         return { code: 'EMAIL_EXISTS', message: 'Cet email correspond déjà à un admin existant.' };
       }
       if (activeInvitations.some((i) => i.email.toLowerCase() === normalizedEmail)) {
-        return {
-          code: 'EMAIL_EXISTS',
-          message: 'Une invitation est déjà en attente pour cet email.',
-        };
+        return { code: 'EMAIL_EXISTS', message: 'Une invitation est déjà en attente pour cet email.' };
       }
 
       const invitation: Invitation = {
@@ -303,55 +280,13 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const acceptInvitation = useCallback(
-    (token: string, fullName: string, password: string): Admin | AdminError => {
-      const inv = invitations.find((i) => i.token === token);
-      if (!inv) return { code: 'INVALID_TOKEN', message: 'Lien d\'invitation invalide.' };
-      if (inv.status === 'accepted' || inv.usedAt) {
-        return { code: 'TOKEN_USED', message: 'Cette invitation a déjà été utilisée.' };
-      }
-      if (inv.status === 'revoked') {
-        return { code: 'INVALID_TOKEN', message: 'Cette invitation a été révoquée.' };
-      }
-      if (new Date(inv.expiresAt).getTime() <= Date.now()) {
-        return { code: 'EXPIRED_TOKEN', message: 'Ce lien d\'invitation a expiré (48h dépassées).' };
-      }
-      // Re-vérification stricte (server-side equivalent)
-      if (admins.length >= ADMIN_MAX) {
-        return {
-          code: 'ADMIN_LIMIT',
-          message: `HTTP 409 — Limite atteinte : ${ADMIN_MAX} admins maximum.`,
-        };
-      }
-
-      const newAdmin: Admin = {
-        id: `adm-${Date.now()}`,
-        email: inv.email,
-        fullName,
-        role: 'admin_secondary',
-        permissions: inv.permissions,
-        invitedBy: inv.invitedBy,
-        createdAt: nowISO(),
-        passwordHash: `mock_hash_${password}`,
-      };
-      setAdmins((prev) => [...prev, newAdmin]);
-      setInvitations((prev) =>
-        prev.map((i) =>
-          i.id === inv.id ? { ...i, status: 'accepted' as const, usedAt: nowISO() } : i,
-        ),
-      );
-      return newAdmin;
-    },
-    [invitations, admins],
-  );
-
   const revokeAdmin = useCallback(
     (adminId: string) => {
       if (!currentAdmin || currentAdmin.role !== 'admin_principal') return;
-      // ne jamais supprimer l'admin principal
       const target = admins.find((a) => a.id === adminId);
       if (!target || target.role === 'admin_principal') return;
       setAdmins((prev) => prev.filter((a) => a.id !== adminId));
+      // TODO Groupe 3 : supprimer le document Firestore `admins/{adminId}`
     },
     [currentAdmin, admins],
   );
@@ -361,7 +296,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     [invitations],
   );
 
-  // ─── Modules ─────────────────────────────────────────────
+  // ─── Modules ──────────────────────────────────────────────────────────────────
   const updateExchangeRate = useCallback(
     (rate: number) => {
       if (!currentAdmin) return;
@@ -416,13 +351,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     exchangeRate,
     rateUpdatedAt,
     rateUpdatedBy,
-    login,
     logout,
     totalAdminSlots,
     canInvite,
     inviteAdmin,
     revokeInvitation,
-    acceptInvitation,
     revokeAdmin,
     getInvitationByToken,
     updateExchangeRate,
@@ -451,4 +384,4 @@ export function isAdminError(value: unknown): value is AdminError {
   );
 }
 
-export { DEMO_PASSWORD, ADMIN_MAX };
+export { ADMIN_MAX };

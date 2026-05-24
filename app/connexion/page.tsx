@@ -4,19 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-
-// Vérifie si un email est celui d'un admin (sans importer AdminProvider pour éviter la dépendance circulaire)
-function checkIsAdmin(email: string): boolean {
-  try {
-    const stored = localStorage.getItem('ilu_admins');
-    if (stored) {
-      const admins = JSON.parse(stored) as Array<{ email: string }>;
-      return admins.some((a) => a.email.toLowerCase() === email.toLowerCase());
-    }
-  } catch { /* ignore */ }
-  // Fallback : vérifier le seed en dur
-  return email.toLowerCase() === 'lievinkabamba1@gmail.com';
-}
+import { getAdminByUid } from '@/lib/firebase/admins';
+import { auth } from '@/lib/firebase/client';
 
 type Mode = 'login' | 'register' | 'reset';
 
@@ -55,7 +44,9 @@ export default function ConnexionPage() {
     try {
       if (mode === 'login') {
         await login(email, password);
-        router.push(checkIsAdmin(email) ? '/admin' : '/compte');
+        const uid = auth.currentUser?.uid;
+        const isAdmin = uid ? !!(await getAdminByUid(uid)) : false;
+        router.push(isAdmin ? '/admin' : '/compte');
       } else if (mode === 'register') {
         if (password !== confirmPassword) {
           setError('Les mots de passe ne correspondent pas.');
@@ -81,10 +72,9 @@ export default function ConnexionPage() {
     setLoading(true);
     try {
       await loginWithGoogle();
-      // Après Google OAuth, l'email est dispo dans auth.currentUser
-      const { auth: fbAuth } = await import('@/lib/firebase/client');
-      const firebaseEmail = fbAuth.currentUser?.email ?? '';
-      router.push(checkIsAdmin(firebaseEmail) ? '/admin' : '/compte');
+      const uid = auth.currentUser?.uid;
+      const isAdmin = uid ? !!(await getAdminByUid(uid)) : false;
+      router.push(isAdmin ? '/admin' : '/compte');
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? '';
       setError(FIREBASE_ERRORS[code] ?? 'Erreur lors de la connexion Google.');

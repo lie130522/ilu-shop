@@ -42,6 +42,7 @@ export async function trackPurchase(
   productId: string,
   category: string,
 ): Promise<void> {
+  if (!hasConsent()) return;
   await trackEvent(uid, { type: 'purchase', productId, category });
 }
 

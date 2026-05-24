@@ -17,7 +17,6 @@ export interface Admin {
   invitedBy?: string;
   createdAt: string;
   lastLogin?: string;
-  passwordHash: string;
 }
 
 export interface Invitation {

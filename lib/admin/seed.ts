@@ -7,6 +7,8 @@ import type {
   ChatMessageRecord,
 } from './types';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 function msg(
   id: string,
   sender: ChatMessageRecord['sender'],
@@ -18,8 +20,7 @@ function msg(
   return { id, sender, content, createdAt, readByAdmin, readByClient };
 }
 
-// Mock principal admin — seeded on first load
-// Demo credentials: lievinkabamba1@gmail.com / ilushop2026
+// Principal admin — identifié par Firebase Auth UID via Firestore `admins/{uid}`
 export const SEED_PRINCIPAL_ADMIN: Admin = {
   id: 'adm-principal-001',
   email: 'lievinkabamba1@gmail.com',
@@ -28,10 +29,12 @@ export const SEED_PRINCIPAL_ADMIN: Admin = {
   permissions: ['catalog', 'orders', 'editorial', 'clients', 'exchange_rate', 'notifications'],
   createdAt: '2026-01-15T08:00:00Z',
   lastLogin: '2026-05-24T08:30:00Z',
-  passwordHash: 'mock_hash_ilushop2026', // mock — in prod this would be bcrypt
 };
 
-export const SEED_CLIENTS: Client[] = [
+// ─── Données de démonstration — UNIQUEMENT en développement ────────────────
+// En production, ces tableaux sont vides. Les vraies données viennent de Firestore.
+
+export const SEED_CLIENTS: Client[] = isDev ? [
   {
     id: 'cli-001',
     email: 'amina.kabongo@gmail.com',
@@ -81,38 +84,9 @@ export const SEED_CLIENTS: Client[] = [
     ordersCount: 4,
     totalSpentUSD: 423,
   },
-  {
-    id: 'cli-006',
-    email: 'david.kasongo@gmail.com',
-    fullName: 'David Kasongo',
-    phone: '+243 81 999 3322',
-    city: 'Kinshasa, Bandalungwa',
-    createdAt: '2026-05-15T10:05:00Z',
-    ordersCount: 1,
-    totalSpentUSD: 64,
-  },
-  {
-    id: 'cli-007',
-    email: 'rachel.mukendi@gmail.com',
-    fullName: 'Rachel Mukendi',
-    phone: '+243 89 222 7733',
-    city: 'Kinshasa, Ngaliema',
-    createdAt: '2026-05-20T13:40:00Z',
-    ordersCount: 2,
-    totalSpentUSD: 198,
-  },
-  {
-    id: 'cli-008',
-    email: 'samuel.kabila@outlook.com',
-    fullName: 'Samuel Kabila',
-    city: 'Bukavu',
-    createdAt: '2026-05-23T08:55:00Z',
-    ordersCount: 0,
-    totalSpentUSD: 0,
-  },
-];
+] : [];
 
-export const SEED_ORDERS: OrderConversation[] = [
+export const SEED_ORDERS: OrderConversation[] = isDev ? [
   {
     id: 'ord-001',
     clientId: 'cli-001',
@@ -146,7 +120,7 @@ export const SEED_ORDERS: OrderConversation[] = [
     messages: [
       msg('m-002-1', 'system', 'Panier : Cabas Cuir Terracotta — $145.00', '2026-05-24T09:42:00Z'),
       msg('m-002-2', 'client', 'Bonjour, je peux payer en M-Pesa ?', '2026-05-24T09:43:00Z'),
-      msg('m-002-3', 'admin', 'Bonjour Grace ! Oui, M-Pesa accepté. Livraison à Limete sous 24h pour 5 000 FC.', '2026-05-24T09:55:00Z'),
+      msg('m-002-3', 'admin', 'Bonjour Grace ! Oui, M-Pesa accepté. Livraison à Limete sous 24h.', '2026-05-24T09:55:00Z'),
       msg('m-002-4', 'client', 'Parfait ça me va.', '2026-05-24T09:57:00Z'),
       msg('m-002-5', 'admin', 'Parfait, je vous envoie le numéro M-Pesa dans un instant.', '2026-05-24T09:58:00Z'),
     ],
@@ -167,70 +141,14 @@ export const SEED_ORDERS: OrderConversation[] = [
     messages: [
       msg('m-003-1', 'system', 'Panier : Manteau Laine Camel (L) — $220.00', '2026-05-23T16:00:00Z'),
       msg('m-003-2', 'client', 'Je prends celui-ci. Airtel Money svp.', '2026-05-23T16:05:00Z'),
-      msg('m-003-3', 'admin', 'Bonjour Sarah, voici le numéro : +243 99 555 1212. Confirmez-moi quand vous avez payé.', '2026-05-23T16:30:00Z'),
+      msg('m-003-3', 'admin', 'Voici le numéro : +243 99 XXX XXXX. Confirmez quand vous avez payé.', '2026-05-23T16:30:00Z'),
       msg('m-003-4', 'client', 'Paiement envoyé !', '2026-05-23T18:10:00Z'),
       msg('m-003-5', 'admin', 'Paiement reçu ✓ Commande confirmée, expédition demain.', '2026-05-23T18:15:00Z'),
     ],
   },
-  {
-    id: 'ord-004',
-    clientId: 'cli-002',
-    clientName: 'Junior Mukendi',
-    status: 'shipped',
-    assignedAdminId: 'adm-principal-001',
-    itemsLabel: 'Aurora Pro 256GB',
-    totalUSD: 699,
-    paymentMethod: 'Virement',
-    lastMessage: 'Commande expédiée, livraison demain matin à Lemba.',
-    lastMessageAt: '2026-05-23T11:20:00Z',
-    unreadCount: 0,
-    createdAt: '2026-05-22T15:30:00Z',
-    messages: [
-      msg('m-004-1', 'system', 'Panier : Aurora Pro 256GB (Titanium) — $699.00', '2026-05-22T15:30:00Z'),
-      msg('m-004-2', 'client', 'Bonjour, je règle par virement.', '2026-05-22T15:32:00Z'),
-      msg('m-004-3', 'admin', 'Bonjour Junior, RIB envoyé en PV. Livraison à Lemba 24-48h.', '2026-05-22T16:00:00Z'),
-      msg('m-004-4', 'admin', 'Commande expédiée, livraison demain matin à Lemba.', '2026-05-23T11:20:00Z'),
-    ],
-  },
-  {
-    id: 'ord-005',
-    clientId: 'cli-007',
-    clientName: 'Rachel Mukendi',
-    status: 'open',
-    itemsLabel: 'Robe Fluide Terracotta',
-    totalUSD: 78,
-    lastMessage: 'Bonjour, je voudrais commander cette robe en taille S.',
-    lastMessageAt: '2026-05-24T07:48:00Z',
-    unreadCount: 1,
-    createdAt: '2026-05-24T07:48:00Z',
-    messages: [
-      msg('m-005-1', 'system', 'Panier : Robe Fluide Terracotta (S) — $78.00', '2026-05-24T07:48:00Z'),
-      msg('m-005-2', 'client', 'Bonjour, je voudrais commander cette robe en taille S.', '2026-05-24T07:48:00Z', false, true),
-    ],
-  },
-  {
-    id: 'ord-006',
-    clientId: 'cli-004',
-    clientName: 'Patrick Tshisekedi',
-    status: 'delivered',
-    assignedAdminId: 'adm-principal-001',
-    itemsLabel: 'Craft Laptop 14"',
-    totalUSD: 1299,
-    paymentMethod: 'Cash à la livraison',
-    lastMessage: 'Livré ✓ Merci pour votre confiance.',
-    lastMessageAt: '2026-05-21T17:00:00Z',
-    unreadCount: 0,
-    createdAt: '2026-05-19T11:00:00Z',
-    messages: [
-      msg('m-006-1', 'system', 'Panier : Craft Laptop 14" (Argent) — $1299.00', '2026-05-19T11:00:00Z'),
-      msg('m-006-2', 'client', 'Bonjour, livraison cash à Goma possible ?', '2026-05-19T11:02:00Z'),
-      msg('m-006-3', 'admin', 'Bonjour Patrick, oui livraison cash. Délai 2-3 jours, transport inclus.', '2026-05-19T11:30:00Z'),
-      msg('m-006-4', 'admin', 'Livré ✓ Merci pour votre confiance.', '2026-05-21T17:00:00Z'),
-    ],
-  },
-];
+] : [];
 
-export const SEED_NOTIFICATIONS: AdminNotification[] = [
+export const SEED_NOTIFICATIONS: AdminNotification[] = isDev ? [
   {
     id: 'notif-001',
     type: 'new_message',
@@ -249,36 +167,8 @@ export const SEED_NOTIFICATIONS: AdminNotification[] = [
     read: false,
     createdAt: '2026-05-24T07:48:00Z',
   },
-  {
-    id: 'notif-003',
-    type: 'new_client',
-    title: 'Nouveau client inscrit',
-    body: 'Samuel Kabila (Bukavu) vient de créer son compte.',
-    referenceId: 'cli-008',
-    read: true,
-    createdAt: '2026-05-23T08:55:00Z',
-  },
-  {
-    id: 'notif-004',
-    type: 'new_message',
-    title: 'Nouveau message — Grace Mbuyi',
-    body: '"Parfait, je vous envoie le numéro M-Pesa…"',
-    referenceId: 'ord-002',
-    read: true,
-    createdAt: '2026-05-24T09:58:00Z',
-  },
-  {
-    id: 'notif-005',
-    type: 'system',
-    title: 'Taux de change mis à jour',
-    body: '1 USD = 2 000 FC (par Lievin Mwamba)',
-    read: true,
-    createdAt: '2026-05-22T14:00:00Z',
-  },
-];
+] : [];
 
 export const SEED_INVITATIONS: Invitation[] = [];
 
 export const ADMIN_MAX = 3;
-
-export const DEMO_PASSWORD = 'ilushop2026';
