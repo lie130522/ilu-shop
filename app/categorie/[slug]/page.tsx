@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { PRODUCTS } from '@/lib/products';
 import CatalogueClient from '@/app/catalogue/CatalogueClient';
 import type { Category } from '@/lib/types';
@@ -74,11 +75,13 @@ export default async function CategoriePage({ params }: Props) {
       </div>
 
       {/* Reuse catalogue client with pre-filtered products */}
-      <CatalogueClient
-        initialCategory={meta.category}
-        initialSubcategory={meta.subcategory}
-        hideHeader
-      />
+      <Suspense fallback={<div className="p-10 text-center text-muted font-display text-sm">Chargement…</div>}>
+        <CatalogueClient
+          initialCategory={meta.category}
+          initialSubcategory={meta.subcategory}
+          hideHeader
+        />
+      </Suspense>
     </div>
   );
 }
