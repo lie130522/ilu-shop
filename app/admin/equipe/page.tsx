@@ -41,6 +41,8 @@ export default function AdminTeamPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastInvitation, setLastInvitation] = useState<Invitation | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState<string | null>(null); // email envoyé
 
   const pendingInvitations = useMemo(
     () => invitations.filter((i) => i.status === 'pending'),
@@ -88,10 +90,11 @@ export default function AdminTeamPage() {
     });
   };
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLastInvitation(null);
+    setEmailSent(null);
     if (perms.size === 0) {
       setError('Sélectionnez au moins une permission.');
       return;
@@ -102,7 +105,32 @@ export default function AdminTeamPage() {
       return;
     }
     setLastInvitation(result);
+    const invitedEmail = email.trim();
     setEmail('');
+
+    // P21 — Envoyer l'email d'invitation via Resend
+    setEmailSending(true);
+    try {
+      const res = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: result.email,
+          token: result.token,
+          permissions: Array.from(perms),
+          invitedByName: currentAdmin?.fullName ?? 'L\'équipe ILU SHOP',
+        }),
+      });
+      if (res.ok) {
+        setEmailSent(invitedEmail);
+      } else {
+        console.warn('[invite] Email non envoyé — le lien reste disponible ci-dessous.');
+      }
+    } catch {
+      console.warn('[invite] Email non envoyé — le lien reste disponible ci-dessous.');
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const copyToClipboard = (text: string, key: string) => {
@@ -432,10 +460,17 @@ export default function AdminTeamPage() {
 
                 <button
                   type="submit"
-                  disabled={!canInvite}
-                  className="w-full h-11 rounded-full bg-terra hover:bg-terra-dark text-cream font-display text-xs font-semibold tracking-[0.25em] uppercase transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={!canInvite || emailSending}
+                  className="w-full h-11 rounded-full bg-terra hover:bg-terra-dark text-cream font-display text-xs font-semibold tracking-[0.25em] uppercase transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Envoyer l'invitation
+                  {emailSending ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-cream/40 border-t-cream rounded-full animate-spin" />
+                      Envoi en cours…
+                    </>
+                  ) : (
+                    'Envoyer l\'invitation'
+                  )}
                 </button>
               </form>
 
@@ -444,9 +479,16 @@ export default function AdminTeamPage() {
                   <div className="font-display text-[10px] tracking-widest uppercase font-semibold text-emerald-700">
                     ✓ Invitation créée
                   </div>
-                  <p className="text-xs text-emerald-800 mt-1 font-light">
-                    En production, un email serait envoyé. En mode démo, copiez le lien ci-dessous :
-                  </p>
+                  {/* P21 — Statut Resend */}
+                  {emailSent ? (
+                    <p className="text-xs text-emerald-800 mt-1 font-light">
+                      📧 Email envoyé à <strong>{emailSent}</strong> via Resend. Le lien reste disponible ci-dessous :
+                    </p>
+                  ) : (
+                    <p className="text-xs text-emerald-800 mt-1 font-light">
+                      Email non envoyé (clé Resend absente ou erreur). Partagez le lien manuellement :
+                    </p>
+                  )}
                   <div className="mt-3 flex items-center gap-2 bg-cream border border-line rounded px-2 py-1.5">
                     <code className="text-[10px] font-mono truncate flex-1">
                       {buildLink(lastInvitation.token)}

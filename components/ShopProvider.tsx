@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import type { CartItem, Currency } from '@/lib/types';
-import { subscribeWishlist, addToWishlist, removeFromWishlist } from '@/lib/firebase/db';
+import { subscribeWishlist, addToWishlist, removeFromWishlist, mergeWishlist } from '@/lib/firebase/db';
 import { subscribeShopSettings } from '@/lib/firebase/settings';
 import { auth } from '@/lib/firebase/client';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -76,6 +76,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       uidRef.current = user?.uid ?? null;
 
       if (user) {
+        // P23 — Fusionner la wishlist locale dans Firestore au login (union sans doublons)
+        try {
+          const localIds = JSON.parse(localStorage.getItem(STORAGE.wishlist) ?? '[]') as string[];
+          if (localIds.length > 0) {
+            mergeWishlist(user.uid, localIds).catch(() => {});
+          }
+        } catch { /* ignore */ }
+
         unsubFirestore = subscribeWishlist(user.uid, (ids) => {
           setWishlist(ids);
           localStorage.setItem(STORAGE.wishlist, JSON.stringify(ids));

@@ -110,6 +110,15 @@ export function subscribeWishlist(uid: string, cb: (ids: string[]) => void): Uns
   }, () => cb([]));
 }
 
+/** P23 — Fusionne une wishlist locale dans Firestore (union, sans doublons) */
+export async function mergeWishlist(uid: string, localIds: string[]): Promise<void> {
+  if (localIds.length === 0) return;
+  await setDoc(doc(db, 'users', uid, 'data', 'wishlist'), {
+    productIds: arrayUnion(...localIds),
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
 // ── Orders ────────────────────────────────────────────────────────────────────
 
 export async function createOrder(uid: string, order: Omit<ClientOrder, 'id'>): Promise<string> {
