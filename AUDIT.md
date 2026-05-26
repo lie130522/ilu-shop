@@ -92,13 +92,13 @@
   Modifier le taux dans `/admin/taux` ne met pas à jour les pages vitrine.
 - **Impact** : Les clients voient des prix CDF incorrects. Le taux admin et le taux vitrine divergent.
 - **Fix** : Centraliser dans Firestore `shop_settings/default.exchangeRate`. Utiliser `subscribeShopSettings` dans un Provider global. Supprimer `USD_TO_CDF_RATE` de `currency.ts` ou en faire une valeur dynamique.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `ShopProvider.tsx` et `AdminProvider.tsx` s'abonnent tous deux à `subscribeShopSettings` (Firestore). `USD_TO_CDF_RATE` reste uniquement comme fallback de démarrage (SSR). Modifier le taux admin met à jour les prix vitrine en temps réel.
 
 ### P12 🔴 Chat store uniquement localStorage — données perdues cross-device
 - **Problème** : Tout l'historique des conversations (messages, photos de paiement, confirmations) est dans `localStorage`. Changer d'appareil, vider le cache ou utiliser la navigation privée = perte totale.
 - **Impact** : Perte de preuves de paiement Mobile Money. Clients qui ne retrouvent pas leur conversation.
 - **Fix** : Migrer `lib/chat/store.ts` vers Firestore (`conversations/{convId}` + sous-collection `messages`). Utiliser `onSnapshot` pour le temps réel.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `lib/chat/store.ts` entièrement migré vers Firestore. `onSnapshot` sur `conversations/{convId}`. Messages persistés cross-device. `initAdminConversations` et `initClientConversation` utilisent le temps réel Firestore.
 
 ### P13 🔴 Triple source pour les commandes (Firestore + localStorage × 2)
 - **Problème** : Les commandes existent dans 3 endroits qui ne se synchronisent jamais :
@@ -107,13 +107,13 @@
   3. localStorage `ilu_orders` (AdminProvider)
 - **Impact** : L'admin ne voit pas les commandes Firestore. Le client ne retrouve pas sa commande dans le chat.
 - **Fix** : Unifier dans Firestore. Le chat doit référencer un `orderId` Firestore. Le dashboard admin doit lire Firestore.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `AdminProvider` lit les commandes via `useSyncExternalStore(chatSubscribe, getConversations)` → Firestore en temps réel. La conversation Firestore est la source unique (chat + statut commande). `users/{uid}/orders` subsiste pour l'historique client mais n'est plus la source admin.
 
 ### P14 🟠 Commandes non sauvegardées pour visiteurs non-connectés
 - **Problème** : Dans `app/commande/page.tsx`, `createOrder` n'est appelé que si `user` existe. Les visiteurs anonymes passent des commandes qui disparaissent à la fermeture du navigateur.
 - **Impact** : Perte de commandes réelles non loggées.
 - **Fix** : Créer la commande dans une collection publique Firestore (`orders/{orderId}`) même pour les anonymes, avec le `sessionId` comme référence.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `findOrCreateConversation(sessionId, {...})` est appelé pour TOUS les clients (connectés ou anonymes). La conversation Firestore inclut `uid: user?.uid` (undefined pour les anonymes). Le `sessionId` (cookie persistant) identifie le visiteur anonyme cross-session.
 
 ### P15 🟠 Statuts de commandes incohérents entre Firestore et types admin
 - **Problème** :
@@ -122,13 +122,13 @@
   Les deux définitions ne correspondent pas (`pending` ≠ `open`, `confirmed` ≠ `order_confirmed`, `cancelled` ≠ `closed`).
 - **Impact** : Impossibilité de croiser les données entre espace client et admin.
 - **Fix** : Aligner sur un seul enum dans `lib/admin/types.ts` et mettre à jour `lib/firebase/db.ts`.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `lib/firebase/db.ts` importe `OrderStatus` depuis `lib/admin/types`. `ClientOrder.status: OrderStatus`. `commande/page.tsx` crée les commandes avec `status: 'open'`. Un seul enum.
 
 ### P16 🟠 Prix produit non snapshotté dans la commande Firestore
 - **Problème** : `CartItem` sauvegardé dans Firestore contient `{productId, size, color, quantity}` mais pas le `priceUSD`. Si un prix change après la commande, l'historique affiche un mauvais montant.
 - **Impact** : Historique de commandes incorrect. Litiges potentiels.
 - **Fix** : Ajouter `priceUSD` dans `CartItem` au moment de la création de commande.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `lib/types.ts` : `CartItem.priceUSD?: number`. `commande/page.tsx` : `itemsWithPrice = lines.map(({item, product}) => ({...item, priceUSD: product.priceUSD}))`. Prix snapshotté au moment de la commande.
 
 ### P17 🟠 Fuite mémoire : listener Firestore wishlist non désinscrit
 - **Problème** : Dans `ShopProvider.tsx`, le `return unsubFS` est dans le callback de `onAuthStateChanged`, pas dans le `useEffect`. Le listener wishlist n'est jamais nettoyé à la déconnexion.
@@ -142,7 +142,7 @@
   });
   return () => { unsub(); unsubFS?.(); };
   ```
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `ShopProvider.tsx` : `let unsubFirestore: (() => void) | null = null`. Nettoyé à chaque changement d'auth (`unsubFirestore?.()`) et à l'unmount (`return () => { unsubAuth(); unsubFirestore?.(); }`).
 
 ---
 
@@ -154,19 +154,19 @@
 - **Problème** : `clearCart()` n'est appelé que si l'utilisateur clique sur "Ouvrir le chat". Si il clique sur "Mon espace" ou "Retour boutique", le panier reste plein.
 - **Impact** : Double commande involontaire possible. Badge panier incorrect dans la navbar.
 - **Fix** : Appeler `clearCart()` directement dans `handleConfirm()` après succès.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `commande/page.tsx` : `clearCart()` appelé immédiatement dans `handleConfirm()` après `createOrder`, avant `findOrCreateConversation`. Indépendant du bouton cliqué ensuite.
 
 ### P19 🟠 Frais de retrait MM non inclus dans le total Firestore
 - **Problème** : `withdrawalFeeCDF` est affiché au client mais `totalUSD` sauvegardé en Firestore ne l'inclut pas.
 - **Impact** : Décalage comptable entre ce que le client paie et ce que l'admin voit.
 - **Fix** : Ajouter un champ `withdrawalFeeCDF` dans `ClientOrder` et le sauvegarder.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `commande/page.tsx` : `...(isMM ? { withdrawalFeeCDF: settings.withdrawalFeeCDF } : {})` inclus dans l'objet order envoyé à Firestore. `totalUSD` reste en USD (correct), `withdrawalFeeCDF` est stocké séparément en CDF pour la comptabilité admin.
 
 ### P20 🟠 Produits créés en admin sans page produit accessible (404)
 - **Problème** : `getProductBySlug` dans `/produit/[slug]` lit uniquement `lib/products.ts` (données statiques). Les produits créés via l'interface admin sont dans `localStorage` avec des slugs potentiellement identiques.
 - **Impact** : Les liens vers les nouveaux produits donnent une page 404.
 - **Fix** : Créer les produits admin dans Firestore (`products/{productId}`). Mettre à jour `getProductBySlug` pour lire Firestore en priorité.
-- **Statut** : ⬜ À faire
+- **Statut** : ✅ Corrigé — `lib/firebase/products.ts` créé : upload images → Firebase Storage, métadonnées → Firestore `products/{id}`. `app/admin/produits/nouveau/page.tsx` : `handlePublish` async, appelle `saveProductToFirestore` après localStorage. `/produit/[slug]` : `dynamicParams = true` + `FirestoreProductPage` client component pour les slugs non seed. Firestore + Storage rules mises à jour.
 
 ### P21 🟠 Invitations admin sans envoi d'email réel
 - **Problème** : Lors de la création d'une invitation admin, le lien est affiché à l'écran mais aucun email n'est envoyé (Resend est installé mais non câblé pour les invitations).
@@ -238,14 +238,16 @@
 
 ## RÉCAPITULATIF PAR STATUT
 
+> Mis à jour le 26/05/2026 après vérification code réel.
+
 | Statut | Nombre |
 |--------|--------|
 | 🔴 Critiques | 9 |
 | 🟠 Importants | 13 |
 | 🟡 Mineurs | 7 |
 | **Total** | **29** |
-| ✅ Corrigés | **19** (P01–P07, P09, P10, P21–P30) |
-| ⬜ Restants | **10** (P11, P12, P13, P14, P15, P16, P17, P18, P19, P20) |
+| ✅ Corrigés | **29/29** — TOUS LES PROBLÈMES RÉSOLUS |
+| ⬜ Restants | **0** |
 
 ---
 

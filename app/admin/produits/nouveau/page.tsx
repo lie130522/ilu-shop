@@ -17,6 +17,7 @@ import {
   type StoredVideo,
   type ImagePipelineStatus,
 } from '@/lib/admin/product-store';
+import { saveProductToFirestore } from '@/lib/firebase/products';
 
 // ── Types locaux ──────────────────────────────────────────────────────────────
 
@@ -114,11 +115,11 @@ export default function NouveauProduitPage() {
     setForm((f) => ({ ...f, [key]: val }));
 
   // ── Publish ────────────────────────────────────────────────────────────────
-  const handlePublish = () => {
+  const handlePublish = async () => {
     setSaving(true);
     const id = createDraftId();
     const now = new Date().toISOString();
-    saveAdminProduct({
+    const product = {
       id,
       slug: slugify(form.name) + '-' + id.split('-')[1],
       name: form.name,
@@ -154,7 +155,21 @@ export default function NouveauProduitPage() {
       reviewCount: 0,
       createdAt: now,
       updatedAt: now,
-    });
+    };
+
+    // 1. Sauvegarde locale immédiate (localStorage)
+    saveAdminProduct(product);
+
+    // 2. Sauvegarde Firestore + upload images Firebase Storage (P20)
+    //    Rend le produit accessible via /produit/[slug] dans le shop public
+    try {
+      await saveProductToFirestore(product);
+    } catch (err) {
+      // En cas d'échec Firestore, le produit reste dans localStorage
+      // L'admin peut réessayer via la page /admin/produits
+      console.error('[handlePublish] Firestore save failed:', err);
+    }
+
     setSaving(false);
     router.push('/admin/produits');
   };

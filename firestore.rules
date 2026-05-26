@@ -49,6 +49,16 @@ service cloud.firestore {
       allow read: if false;
     }
 
+    // ── Produits catalogue (P20) ──────────────────────────────────────────────
+    // Lecture publique : catalogue accessible à tous les visiteurs.
+    // Écriture : réservée aux admins authentifiés (via AdminProvider).
+    // Suppression : réservée à l'admin principal.
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow delete: if isPrincipalAdmin();
+    }
+
     // ── Paramètres boutique ───────────────────────────────────────────────────
     // Lecture publique : les numéros MM et frais sont affichés à tous les clients.
     // Écriture : tout admin authentifié (l'UI vérifie les permissions par champ).
