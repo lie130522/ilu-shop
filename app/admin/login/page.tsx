@@ -37,6 +37,7 @@ export default function AdminLoginPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError('');
+    let uid: string | undefined;
 
     try {
       const provider = new GoogleAuthProvider();
@@ -44,11 +45,12 @@ export default function AdminLoginPage() {
       provider.setCustomParameters({ prompt: 'select_account' });
       const credential = await signInWithPopup(auth, provider);
 
-      const { uid, email, displayName } = credential.user;
+      const { uid: _uid, email, displayName } = credential.user;
+      uid = _uid;
 
       // Vérifie/crée le document admin directement — n'attend pas AdminProvider
       const admin = await bootstrapAdminIfNeeded(
-        uid,
+        _uid,
         email ?? '',
         displayName ?? '',
       );
@@ -67,13 +69,24 @@ export default function AdminLoginPage() {
       }
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code ?? '';
+      const message = (err as { message?: string })?.message ?? '';
       // L'utilisateur a fermé la fenêtre popup — pas d'erreur visible
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
         setLoading(false);
         return;
       }
-      console.error('[AdminLogin] signInWithPopup error:', err);
-      setError('Connexion échouée. Vérifiez votre compte Google et réessayez.');
+      console.error('[AdminLogin] error:', err);
+      // Erreur Firestore rules non déployées
+      if (message.startsWith('FIRESTORE_CREATE_FAILED')) {
+        const fsCode = message.split(':')[1] ?? '';
+        setError(
+          `Règles Firestore non déployées (${fsCode}). ` +
+          `Créez manuellement le document admins/${uid ?? '…'} dans Firebase Console, ` +
+          `ou déployez les règles avec : firebase deploy --only firestore:rules`,
+        );
+      } else {
+        setError('Connexion échouée. Vérifiez votre compte Google et réessayez.');
+      }
       setLoading(false);
     }
   };

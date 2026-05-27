@@ -302,11 +302,16 @@ export default function AdminOrdersPage() {
               <>
                 {/* Header */}
                 <div className="border-b border-line p-5 flex items-start justify-between gap-4 flex-wrap shrink-0">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-display font-bold text-lg">{active.clientName}</h3>
                     <p className="text-xs text-muted">{active.itemsLabel}</p>
+                    {active.cartSummary && active.cartSummary !== 'Panier vide' && (
+                      <div className="mt-2 p-2.5 bg-bone rounded-lg border border-line text-[11px] text-ink-light font-light leading-relaxed whitespace-pre-line max-w-xs">
+                        {active.cartSummary}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <div className="font-display font-extrabold text-2xl text-terra">
                       {formatUSD(active.totalUSD)}
                     </div>

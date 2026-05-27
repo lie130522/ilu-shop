@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useShop } from '@/components/ShopProvider';
 import { useAuth } from '@/components/AuthProvider';
-import { PRODUCTS } from '@/lib/products';
+import { useAllProducts } from '@/lib/hooks/useAllProducts';
 import { formatCDF, formatUSD, usdToCdf } from '@/lib/currency';
 import { createOrder } from '@/lib/firebase/db';
 import { getShopSettings, DEFAULT_SETTINGS } from '@/lib/firebase/settings';
@@ -34,7 +34,8 @@ const STEPS: { key: Step; label: string }[] = [
 ];
 
 export default function CommandePage() {
-  const { cart, clearCart, openChat } = useShop();
+  const { cart, clearCart, openChat, exchangeRate } = useShop();
+  const allProducts = useAllProducts();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -71,7 +72,7 @@ export default function CommandePage() {
 
   const lines = cart
     .map((item) => {
-      const product = PRODUCTS.find((p) => p.id === item.productId);
+      const product = allProducts.find((p) => p.id === item.productId);
       return product ? { item, product } : null;
     })
     .filter((x): x is NonNullable<typeof x> => !!x);
@@ -139,6 +140,9 @@ export default function CommandePage() {
 
       // P18 — Vider le panier dès la confirmation
       clearCart();
+      // Passer à l'étape confirmation immédiatement pour éviter la redirection
+      // (l'effect surveille cart.length===0 && step!=='confirmation')
+      setStep('confirmation');
 
       // P12/P13/P14 — Créer la conversation Firestore (tous les clients, y compris anonymes)
       const sessionId = getOrCreateSessionId();
@@ -179,7 +183,6 @@ export default function CommandePage() {
         );
       }
 
-      setStep('confirmation');
     } catch {
       setError('Une erreur est survenue. Réessaie.');
     } finally {
@@ -605,7 +608,7 @@ export default function CommandePage() {
                 <div className="text-right">
                   <div className="font-display font-extrabold text-2xl text-cream">{formatUSD(subtotal)}</div>
                   <div className="text-gold font-display text-sm mt-0.5">
-                    ≈ {formatCDF(usdToCdf(subtotal))}{isMM ? ` + ${formatCDF(settings.withdrawalFeeCDF)}` : ''}
+                    ≈ {formatCDF(usdToCdf(subtotal, exchangeRate))}{isMM ? ` + ${formatCDF(settings.withdrawalFeeCDF)}` : ''}
                   </div>
                 </div>
               </div>

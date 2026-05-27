@@ -69,6 +69,7 @@ export interface OrderConversation {
   status: OrderStatus;
   assignedAdminId?: string;
   itemsLabel: string;
+  cartSummary?: string;   // Détail des articles (nom × qty — prix, chaque ligne)
   totalUSD: number;
   paymentMethod?: string;
   lastMessage: string;

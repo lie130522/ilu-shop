@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSyncExternalStore } from 'react';
 import { useShop } from './ShopProvider';
 import { useAuth } from './AuthProvider';
-import { PRODUCTS } from '@/lib/products';
+import { useAllProducts } from '@/lib/hooks/useAllProducts';
 import { formatCDF, formatUSD, usdToCdf } from '@/lib/currency';
 import type { ChatMessageRecord } from '@/lib/admin/types';
 import { uploadChatFile } from '@/lib/firebase/settings';
@@ -28,8 +28,9 @@ function fmtTime(iso: string): string {
 const EMPTY_CONVERSATIONS: ReturnType<typeof getConversations> = [];
 
 export function ChatModal() {
-  const { chatOpen, closeChat, cart, exchangeRate } = useShop();
+  const { chatOpen, closeChat, cart, exchangeRate, chatOrderContext } = useShop();
   const { user } = useAuth();
+  const allProducts = useAllProducts();
 
   const [convId, setConvId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -77,9 +78,10 @@ export function ChatModal() {
 
     const sessionId = getOrCreateSessionId();
 
+    // Résoudre les articles du panier via allProducts (seed + Firestore)
     const cartLines = cart
       .map((item) => {
-        const p = PRODUCTS.find((x) => x.id === item.productId);
+        const p = allProducts.find((x) => x.id === item.productId);
         if (!p) return null;
         const variant = [item.size, item.color].filter(Boolean).join(' / ');
         return `${p.name}${variant ? ` (${variant})` : ''} × ${item.quantity} — ${formatUSD(p.priceUSD)}`;
@@ -87,7 +89,7 @@ export function ChatModal() {
       .filter(Boolean) as string[];
 
     const totalUSD = cart.reduce((sum, item) => {
-      const p = PRODUCTS.find((x) => x.id === item.productId);
+      const p = allProducts.find((x) => x.id === item.productId);
       return sum + (p ? p.priceUSD * item.quantity : 0);
     }, 0);
 
@@ -95,13 +97,15 @@ export function ChatModal() {
       ? cartLines.join('\n') + `\nTotal : ${formatUSD(totalUSD)}`
       : 'Panier vide';
 
-    const itemsLabel = cartLines.length
-      ? cart
-          .slice(0, 2)
-          .map((item) => PRODUCTS.find((x) => x.id === item.productId)?.name ?? '')
-          .filter(Boolean)
-          .join(' + ') + (cart.length > 2 ? ` +${cart.length - 2}` : '')
-      : 'Aucun article';
+    const itemsLabel = chatOrderContext
+      ? chatOrderContext.productName
+      : cartLines.length
+        ? cart
+            .slice(0, 2)
+            .map((item) => allProducts.find((x) => x.id === item.productId)?.name ?? '')
+            .filter(Boolean)
+            .join(' + ') + (cart.length > 2 ? ` +${cart.length - 2}` : '')
+        : 'Aucun article';
 
     // Chercher d'abord dans le cache local
     const existing = getConversations().find(
@@ -125,11 +129,33 @@ export function ChatModal() {
       });
       setConvId(conv.id);
 
-      // Message de bienvenue automatique
-      const greeting =
-        cartLines.length > 0
-          ? `Bonjour ! 👋 Merci pour votre intérêt.\n\nVotre panier :\n${cartLines.join('\n')}\n\nTotal : ${formatUSD(totalUSD)} / ≈ ${formatCDF(usdToCdf(totalUSD, exchangeRate))}\n\nNotre équipe va vous contacter pour le paiement et la livraison. En attendant, n'hésitez pas à poser vos questions ici. 🛍️`
-          : `Bonjour ! 👋 Bienvenue chez ILU SHOP. Comment pouvons-nous vous aider ?`;
+      // ── Message de bienvenue automatique ───────────────────────────────────
+      let greeting: string;
+
+      if (chatOrderContext) {
+        // Ouverture depuis "Commander via le chat" sur une fiche produit
+        const { productName, priceUSD, size, color, qty } = chatOrderContext;
+        const variant = [size, color].filter(Boolean).join(' / ');
+        const lineTotal = priceUSD * qty;
+        greeting =
+          `Bonjour ! 👋 Merci pour votre commande.\n\n` +
+          `🛍️ ${productName}` +
+          (variant ? `\n   Variante : ${variant}` : '') +
+          `\n   Quantité : ${qty}` +
+          `\n   Prix : ${formatUSD(lineTotal)}${qty > 1 ? ` (${formatUSD(priceUSD)} / pièce)` : ''} ≈ ${formatCDF(usdToCdf(lineTotal, exchangeRate))}\n\n` +
+          `Notre équipe va vous contacter très vite pour confirmer le paiement et la livraison. 🎉\n\n` +
+          `Des questions en attendant ?`;
+      } else if (cartLines.length > 0) {
+        // Ouverture depuis le panier ou l'icône header
+        greeting =
+          `Bonjour ! 👋 Merci pour votre intérêt.\n\n` +
+          `Votre panier :\n${cartLines.join('\n')}\n\n` +
+          `Total : ${formatUSD(totalUSD)} / ≈ ${formatCDF(usdToCdf(totalUSD, exchangeRate))}\n\n` +
+          `Notre équipe va vous contacter pour le paiement et la livraison. En attendant, n'hésitez pas à poser vos questions ici. 🛍️`;
+      } else {
+        greeting = `Bonjour ! 👋 Bienvenue chez ILU SHOP. Comment pouvons-nous vous aider ?`;
+      }
+
       await sendMessage(conv.id, 'admin', greeting);
     })();
   }, [chatOpen]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -271,18 +297,19 @@ export function ChatModal() {
 
         {/* Quick replies */}
         <div className="px-4 py-3 border-t border-line bg-cream flex flex-wrap gap-2">
-          {['M-Pesa', 'Airtel Money', 'Cash à la livraison', 'Livraison Gombe', 'Retrait boutique'].map(
-            (q) => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => setInput(q)}
-                className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-beige hover:bg-terra hover:text-cream transition-colors"
-              >
-                {q}
-              </button>
-            ),
-          )}
+          {(chatOrderContext
+            ? ['Comment payer en M-Pesa ?', 'Délai de livraison ?', "Disponible en d'autres couleurs ?", 'Puis-je modifier ma commande ?']
+            : ['M-Pesa', 'Airtel Money', 'Cash à la livraison', 'Livraison Gombe', 'Retrait boutique']
+          ).map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => setInput(q)}
+              className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-beige hover:bg-terra hover:text-cream transition-colors"
+            >
+              {q}
+            </button>
+          ))}
         </div>
 
         {/* Input */}

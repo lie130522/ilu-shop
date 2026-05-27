@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 import { useShop } from '@/components/ShopProvider';
-import { PRODUCTS } from '@/lib/products';
+import { useAllProducts } from '@/lib/hooks/useAllProducts';
 import { formatUSD } from '@/lib/currency';
 import { getUserOrders, getUserProfile, setUserProfile } from '@/lib/firebase/db';
 import type { ClientOrder, UserProfile } from '@/lib/firebase/db';
@@ -25,6 +25,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 export default function ComptePage() {
   const { user, loading, logout } = useAuth();
   const { wishlist, toggleWishlist } = useShop();
+  const allProducts = useAllProducts();
   const router = useRouter();
 
   const [tab, setTab] = useState<Tab>('dashboard');
@@ -72,7 +73,7 @@ export default function ComptePage() {
   }
 
   const initial = (user.displayName || user.email || 'U')[0].toUpperCase();
-  const wishlistProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
+  const wishlistProducts = allProducts.filter((p) => wishlist.includes(p.id));
 
   const handleLogout = async () => {
     await logout();

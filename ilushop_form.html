@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ILU SHOP — Nouveau produit</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F2EDE4;
+    --cream2: #EDE7DC;
+    --cream3: #E5DDD2;
+    --dark: #1A1410;
+    --terra: #C4512A;
+    --terra-light: rgba(196,81,42,0.1);
+    --muted: #7A6E65;
+    --border: rgba(26,20,16,0.12);
+    --border2: rgba(26,20,16,0.07);
+    --success: #3A7D4E;
+    --success-light: rgba(58,125,78,0.1);
+    --warning: #B07A1A;
+    --warning-light: rgba(176,122,26,0.1);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream2);
+    color: var(--dark);
+    min-height: 100vh;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--cream); border-bottom: 1px solid var(--border);
+    padding: 0 40px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-left h1 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .topbar-left p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .search-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--cream2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 7px 16px; width: 240px;
+    font-size: 13px; color: var(--muted);
+  }
+  .notif-btn {
+    position: relative; width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--border); background: transparent;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .notif-badge {
+    position: absolute; top: -3px; right: -3px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--terra); color: #fff;
+    font-size: 9px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .user-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--terra); color: #fff;
+    border: none; border-radius: 20px; padding: 6px 14px 6px 6px;
+    cursor: pointer; font-size: 13px; font-weight: 500;
+  }
+  .user-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 11px;
+  }
+
+  /* ── STEPPER ── */
+  .stepper-wrap {
+    background: var(--cream); border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+  }
+  .stepper {
+    display: flex; align-items: center; max-width: 860px;
+  }
+  .step {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    position: relative; cursor: pointer;
+  }
+  .step-circle {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
+    border: 2px solid var(--border2);
+    background: var(--cream2); color: var(--muted);
+    transition: all 0.25s;
+  }
+  .step.active .step-circle {
+    background: var(--terra); border-color: var(--terra);
+    color: #fff; box-shadow: 0 0 0 4px var(--terra-light);
+  }
+  .step.done .step-circle {
+    background: var(--success); border-color: var(--success); color: #fff;
+  }
+  .step-label {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+    white-space: nowrap;
+  }
+  .step.active .step-label { color: var(--terra); font-weight: 600; }
+  .step.done .step-label { color: var(--success); }
+  .step-line {
+    flex: 1; height: 2px; background: var(--border2);
+    margin: 0 8px; margin-bottom: 22px;
+    transition: background 0.3s;
+  }
+  .step-line.done { background: var(--success); }
+
+  /* ── LAYOUT ── */
+  .form-layout {
+    display: grid; grid-template-columns: 1fr 320px;
+    gap: 24px; padding: 28px 40px; max-width: 1200px; margin: 0 auto;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--cream); border: 1px solid var(--border2);
+    border-radius: 16px; padding: 28px 32px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700;
+    letter-spacing: -0.3px; margin-bottom: 6px;
+  }
+  .card-divider { height: 1px; background: var(--border); margin: 16px 0 24px; }
+
+  /* ── FORM ELEMENTS ── */
+  .field { margin-bottom: 22px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-label {
+    display: block; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .field-label .req { color: var(--terra); margin-left: 2px; }
+  .field-input {
+    width: 100%; padding: 11px 16px;
+    background: var(--cream2); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+    color: var(--dark); outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+  }
+  .field-input:focus {
+    border-color: var(--terra);
+    box-shadow: 0 0 0 3px var(--terra-light);
+    background: var(--cream);
+  }
+  .field-input::placeholder { color: rgba(122,110,101,0.5); }
+  .field-input[disabled] { opacity: 0.45; cursor: not-allowed; }
+  select.field-input { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237A6E65' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+  textarea.field-input { resize: vertical; min-height: 90px; line-height: 1.5; }
+  .field-hint {
+    display: flex; align-items: flex-start; gap: 6px;
+    font-size: 12px; color: var(--muted); margin-top: 7px; line-height: 1.5;
+  }
+  .field-hint .icon { flex-shrink: 0; margin-top: 1px; }
+  .field-counter { font-size: 11px; color: var(--muted); margin-top: 5px; text-align: right; }
+  .price-wrap { position: relative; }
+  .price-wrap .currency {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; color: var(--muted); pointer-events: none;
+  }
+  .price-wrap .field-input { padding-left: 28px; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* ── VARIANTS ── */
+  .variant-section { margin-top: 8px; }
+  .variant-title {
+    font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .variant-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .tags-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .tag-toggle {
+    padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+    border: 1.5px solid var(--border); background: var(--cream2);
+    color: var(--dark); cursor: pointer; transition: all 0.15s;
+    user-select: none;
+  }
+  .tag-toggle:hover { border-color: var(--terra); color: var(--terra); }
+  .tag-toggle.selected {
+    background: var(--terra); border-color: var(--terra); color: #fff;
+  }
+  .color-swatch {
+    width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; transition: all 0.15s;
+    position: relative;
+  }
+  .color-swatch:hover { transform: scale(1.15); }
+  .color-swatch.selected { border-color: var(--terra); box-shadow: 0 0 0 2px var(--cream), 0 0 0 4px var(--terra); }
+  .color-swatch.selected::after {
+    content: '✓'; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: rgba(255,255,255,0.9); font-weight: 700;
+  }
+  .add-variant-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    border: 1.5px dashed var(--border); color: var(--muted);
+    background: transparent; cursor: pointer; transition: all 0.2s;
+  }
+  .add-variant-btn:hover { border-color: var(--terra); color: var(--terra); background: var(--terra-light); }
+
+  /* ── CATEGORY BADGE ── */
+  .cat-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    margin-bottom: 18px;
+  }
+  .cat-badge.mode { background: rgba(196,81,42,0.12); color: var(--terra); }
+  .cat-badge.tech { background: rgba(30,50,80,0.1); color: #1E3250; }
+  .cat-badge.digital { background: rgba(176,122,26,0.12); color: var(--warning); }
+  .cat-badge.chaussures { background: rgba(58,125,78,0.1); color: var(--success); }
+  .cat-badge.hybride { background: rgba(100,80,180,0.1); color: #6450B4; }
+
+  /* ── DYNAMIC SECTION ── */
+  .dynamic-section { animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── INFO BANNER ── */
+  .info-banner {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 16px; border-radius: 10px;
+    font-size: 13px; line-height: 1.5; margin-bottom: 20px;
+  }
+  .info-banner.tip { background: var(--warning-light); color: var(--warning); border: 1px solid rgba(176,122,26,0.2); }
+  .info-banner.info { background: rgba(30,50,80,0.07); color: #1E3250; border: 1px solid rgba(30,50,80,0.15); }
+  .info-banner.success { background: var(--success-light); color: var(--success); border: 1px solid rgba(58,125,78,0.2); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {}
+  .sidebar-card { background: var(--cream); border: 1px solid var(--border2); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+  .sidebar-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; margin-bottom: 14px; }
+  .progress-bar { height: 6px; background: var(--cream2); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+  .progress-fill { height: 100%; background: var(--terra); border-radius: 4px; transition: width 0.4s; }
+  .progress-label { font-size: 11px; color: var(--muted); }
+  .checklist { display: flex; flex-direction: column; gap: 8px; }
+  .check-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .check-icon { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; transition: all 0.2s; }
+  .check-item.done .check-icon { background: var(--success); border-color: var(--success); color: #fff; }
+  .check-item.pending .check-icon { background: var(--terra-light); border-color: var(--terra); color: var(--terra); }
+  .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border2); font-size: 13px; }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-key { color: var(--muted); font-size: 12px; }
+  .summary-val { font-weight: 500; max-width: 160px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── FOOTER BUTTONS ── */
+  .form-footer {
+    background: var(--cream); border-top: 1px solid var(--border);
+    padding: 16px 40px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; bottom: 0; z-index: 50;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 24px; border-radius: 24px; font-size: 13px;
+    font-weight: 500; cursor: pointer; border: none; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+  .btn-ghost:hover { color: var(--dark); border-color: var(--dark); }
+  .btn-primary { background: var(--terra); color: #fff; }
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
+  .btn-success { background: var(--success); color: #fff; }
+  .step-indicator { font-size: 12px; color: var(--muted); }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: 12px;
+    padding: 36px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--cream2);
+  }
+  .upload-zone:hover { border-color: var(--terra); background: var(--terra-light); }
+  .upload-zone .icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+  .upload-zone p { font-size: 14px; color: var(--muted); }
+  .upload-zone span { font-size: 12px; color: var(--muted); opacity: 0.7; }
+
+  /* ── PUBLICATION LABELS ── */
+  .label-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .label-card {
+    border: 2px solid var(--border); border-radius: 10px; padding: 14px;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 10px;
+  }
+  .label-card:hover { border-color: var(--terra); background: var(--terra-light); }
+  .label-card.selected { border-color: var(--terra); background: var(--terra-light); }
+  .label-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .label-name { font-weight: 600; font-size: 13px; }
+  .label-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* HIDDEN */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>Nouveau produit</h1>
+    <p>Formulaire de création — 5 étapes</p>
+  </div>
+  <div class="topbar-right">
+    <div class="search-bar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Rechercher…
+    </div>
+    <button class="notif-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="notif-badge">2</span>
+    </button>
+    <button class="user-btn">
+      <div class="user-avatar">LK</div>
+      Lievin ▾
+    </button>
+  </div>
+</div>
+
+<!-- STEPPER -->
+<div class="stepper-wrap">
+  <div class="stepper">
+    <div class="step active" id="step-1" onclick="goToStep(1)">
+      <div class="step-circle">1</div>
+      <div class="step-label">Infos</div>
+    </div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step" id="step-2" onclick="goToStep(2)">
+      <div class="step-circle">2</div>
+      <div class="step-label">Variantes</div>
+    </div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step" id="step-3" onclick="goToStep(3)">
+      <div class="step-circle">3</div>
+      <div class="step-label">Médias</div>
+    </div>
+    <div class="step-line" id="line-3"></div>
+    <div class="step" id="step-4" onclick="goToStep(4)">
+      <div class="step-circle">4</div>
+      <div class="step-label">Pipeline IA</div>
+    </div>
+    <div class="step-line" id="line-4"></div>
+    <div class="step" id="step-5" onclick="goToStep(5)">
+      <div class="step-circle">5</div>
+      <div class="step-label">Publication</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="form-layout">
+  <!-- LEFT: FORM PANELS -->
+  <div>
+
+    <!-- ══ ÉTAPE 1 : INFOS ══ -->
+    <div id="panel-1">
+      <div class="card">
+        <div class="card-title">Informations de base</div>
+        <div class="card-divider"></div>
+
+        <div class="field">
+          <label class="field-label">Nom du produit <span class="req">*</span></label>
+          <input class="field-input" id="f-nom" type="text" placeholder="ex: Veste Cargo Beige Sable" oninput="updateSummary()">
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Catégorie <span class="req">*</span></label>
+            <select class="field-input" id="f-cat" onchange="onCatChange()">
+              <option value="">— Choisir —</option>
+              <option value="mode">Mode</option>
+              <option value="chaussures">Chaussures</option>
+              <option value="tech">Technologie</option>
+              <option value="hybride">Wearables / Hybrides</option>
+              <option value="digital">Services digitaux</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Sous-catégorie</label>
+            <select class="field-input" id="f-subcat" onchange="onSubcatChange()" disabled>
+              <option value="">— Choisir —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- CHAMPS DYNAMIQUES selon catégorie -->
+        <div id="dynamic-fields" class="dynamic-section hidden"></div>
+
+      </div>
+
+      <!-- PRIX & STOCK -->
+      <div class="card" id="card-prix">
+        <div class="card-title">Prix & stock</div>
+        <div class="card-divider"></div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Prix USD <span class="req">*</span></label>
+            <div class="price-wrap">
+              <span class="currency">$</span>
+              <input class="field-input" id="f-prix" type="number" step="0.01" placeholder="89.00" oninput="updateSummary()">
+            </div>
+            <div class="field-hint"><span class="icon">💡</span> Pour définir un prix barré (promo), sélectionne l'étiquette <strong>% Promo</strong> à l'étape Publication.</div>
+          </div>
+          <div class="field" id="field-stock">
+            <label class="field-label" id="stock-label">Stock <span class="req">*</span></label>
+            <input class="field-input" id="f-stock" type="number" placeholder="ex: 12">
+          </div>
+        </div>
+      </div>
+
+      <!-- DESCRIPTIONS -->
+      <div class="card">
+        <div class="card-title">Descriptions</div>
+        <div class="card-divider"></div>
+        <div class="field">
+          <label class="field-label">Description courte</label>
+          <textarea class="field-input" id="f-desc-court" maxlength="120" placeholder="1-2 lignes qui apparaissent sur la carte produit" oninput="countChars('f-desc-court','counter-court',120)"></textarea>
+          <div class="field-counter" id="counter-court">0/120</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Description complète</label>
+          <textarea class="field-input" id="f-desc-full" style="min-height:120px" placeholder="Description détaillée du produit (matière, entretien, conseils de taille…)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ÉTAPE 2 : VARIANTES ══ -->
+    <div id="panel-2" class="hidden">
+      <div class="card" id="variant-card">
+        <div class="card-title">Variantes du produit</div>
+        <div class="card-divider"></div>
+        <div id="variant-content">
+          <div class="info-banner info">ℹ️ Sélectionne d'abord une catégorie à l'étape 1 pour voir les variantes adaptées.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ÉTAPE 3 : MÉDIAS ══ -->
+    <div id="panel-3" class="hidden">
+      <div class="card">
+        <div class="card-title">Photos & médias</div>
+        <div class="card-divider"></div>
+        <div class="upload-zone" onclick="alert('Sélection de fichier (intégration backend)')">
+          <div class="icon">📷</div>
+          <p>Glisser-déposer ou cliquer pour ajouter des photos</p>
+          <span>JPG, PNG, WEBP — max 5 Mo par image — min 800×800 px recommandé</span>
+        </div>
+        <div class="info-banner tip" style="margin-top:16px">💡 <span>Ajoute au minimum <strong>3 photos</strong> : face, dos, et détail. Les photos sur fond blanc augmentent le taux de conversion.</span></div>
+      </div>
+    </div>
+
+    <!-- ══ ÉTAPE 4 : PIPELINE IA ══ -->
+    <div id="panel-4" class="hidden">
+      <div class="card">
+        <div class="card-title">Pipeline IA</div>
+        <div class="card-divider"></div>
+        <div class="info-banner success">✨ <span>L'IA va générer automatiquement les métadonnées SEO, les tags de recherche et la description optimisée à partir de tes informations.</span></div>
+        <div class="field">
+          <label class="field-label">Mots-clés supplémentaires (optionnel)</label>
+          <input class="field-input" type="text" placeholder="ex: streetwear, oversize, printemps 2026…">
+          <div class="field-hint"><span class="icon">💡</span> Sépare les mots-clés par des virgules.</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Ton de la description</label>
+          <select class="field-input">
+            <option>Éditorial (magazine)</option>
+            <option>Commercial (direct)</option>
+            <option>Luxe (raffiné)</option>
+            <option>Jeune & urbain</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="alert('Lancement du pipeline IA…')">✨ Générer avec l'IA</button>
+      </div>
+    </div>
+
+    <!-- ══ ÉTAPE 5 : PUBLICATION ══ -->
+    <div id="panel-5" class="hidden">
+      <div class="card">
+        <div class="card-title">Étiquettes & visibilité</div>
+        <div class="card-divider"></div>
+        <div class="label-grid">
+          <div class="label-card" onclick="toggleLabel(this)">
+            <div class="label-icon" style="background:rgba(196,81,42,0.12)">🔥</div>
+            <div><div class="label-name">À la une</div><div class="label-desc">Mis en avant sur la home</div></div>
+          </div>
+          <div class="label-card" onclick="toggleLabel(this)">
+            <div class="label-icon" style="background:rgba(26,20,16,0.08)">📈</div>
+            <div><div class="label-name">Tendance</div><div class="label-desc">Affiché dans "Best sellers"</div></div>
+          </div>
+          <div class="label-card" onclick="toggleLabel(this)">
+            <div class="label-icon" style="background:rgba(58,125,78,0.1)">✨</div>
+            <div><div class="label-name">Nouveau</div><div class="label-desc">Badge "Nouveau" sur la carte</div></div>
+          </div>
+          <div class="label-card" onclick="toggleLabel(this)">
+            <div class="label-icon" style="background:rgba(176,122,26,0.12)">%</div>
+            <div><div class="label-name">% Promo</div><div class="label-desc">Activer un prix barré</div></div>
+          </div>
+        </div>
+        <div id="promo-field" class="hidden" style="margin-top:16px">
+          <div class="field">
+            <label class="field-label">Prix barré (ancien prix USD)</label>
+            <div class="price-wrap"><span class="currency">$</span><input class="field-input" type="number" step="0.01" placeholder="112.00"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Statut de publication</div>
+        <div class="card-divider"></div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">Visibilité</label>
+            <select class="field-input">
+              <option>Publié</option>
+              <option>Brouillon</option>
+              <option>Archivé</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Date de mise en ligne</label>
+            <input class="field-input" type="date">
+          </div>
+        </div>
+        <button class="btn btn-success" style="width:100%;justify-content:center;margin-top:8px" onclick="alert('Produit publié avec succès !')">🚀 Publier le produit</button>
+      </div>
+    </div>
+
+  </div><!-- /left -->
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-title">Progression</div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:20%"></div></div>
+      <div class="progress-label" id="progress-label">Étape 1 sur 5</div>
+      <div style="margin-top:16px" class="checklist" id="checklist">
+        <div class="check-item pending" id="chk-cat"><div class="check-icon">!</div><span>Catégorie sélectionnée</span></div>
+        <div class="check-item" id="chk-nom"><div class="check-icon"></div><span>Nom du produit</span></div>
+        <div class="check-item" id="chk-prix"><div class="check-icon"></div><span>Prix renseigné</span></div>
+        <div class="check-item" id="chk-desc"><div class="check-icon"></div><span>Description courte</span></div>
+      </div>
+    </div>
+    <div class="sidebar-card">
+      <div class="sidebar-title">Récapitulatif</div>
+      <div id="summary-list">
+        <div class="summary-row"><span class="summary-key">Catégorie</span><span class="summary-val" id="s-cat">—</span></div>
+        <div class="summary-row"><span class="summary-key">Sous-catégorie</span><span class="summary-val" id="s-subcat">—</span></div>
+        <div class="summary-row"><span class="summary-key">Nom</span><span class="summary-val" id="s-nom">—</span></div>
+        <div class="summary-row"><span class="summary-key">Prix</span><span class="summary-val" id="s-prix">—</span></div>
+      </div>
+    </div>
+    <div class="sidebar-card" id="tip-card">
+      <div class="sidebar-title">💡 Conseil</div>
+      <div id="tip-text" style="font-size:13px;color:var(--muted);line-height:1.6">Sélectionne une catégorie pour voir les conseils adaptés à ton type de produit.</div>
+    </div>
+  </div>
+</div><!-- /form-layout -->
+
+<!-- FOOTER -->
+<div class="form-footer">
+  <button class="btn btn-ghost" id="btn-back" onclick="prevStep()" disabled>← Précédent</button>
+  <span class="step-indicator" id="step-indicator">Étape 1 sur 5</span>
+  <button class="btn btn-primary" id="btn-next" onclick="nextStep()">Suivant →</button>
+</div>
+
+<script>
+/* ───────────────────────────────────────
+   DATA : sous-catégories par catégorie
+─────────────────────────────────────── */
+const SUBCATS = {
+  mode: ['Vêtements','Pantalons','Vestes & manteaux','Robes & jupes','Pulls & sweats','Sous-vêtements','Maroquinerie','Parfums & beauté'],
+  chaussures: ['Baskets / sneakers','Sandales & tongs','Bottes & bottines','Escarpins','Mocassins','Chaussures enfants'],
+  tech: ['Smartphones','Tablettes','Laptops & PC','Accessoires tech','Audio'],
+  hybride: ['Montre connectée','Bracelet fitness','Lunettes connectées','Casque audio','Écouteurs sans fil'],
+  digital: ['Abonnement streaming','Abonnement productivité','Abonnement gaming','Forfait data Vodacom','Forfait data Airtel','Forfait data Africell','Forfait data Orange'],
+};
+
+const TIPS = {
+  mode: '🧥 Pour les vêtements, ajoute obligatoirement les tailles (XS→XXXL) et les coloris disponibles. Une bonne description matière augmente la confiance client.',
+  chaussures: '👟 Indique la plage de pointures disponibles (enfants 20–35, adultes 36–49). Les photos des deux côtés de la chaussure sont essentielles.',
+  tech: '💻 Pour la tech, précise le stockage, la RAM et la couleur. Mentionne la garantie et la compatibilité réseau (4G/5G) dans la description.',
+  hybride: '⌚ Ce produit est hybride (Mode + Tech). Il sera affiché dans les deux rayons. Indique la taille du bracelet ET les specs connectivité.',
+  digital: '📡 Service digital = livraison instantanée. Pas de stock à gérer. Précise la durée, la plateforme et le mode de livraison (code ou compte).',
+};
+
+const DYNAMIC_FIELDS = {
+  mode: `
+    <div class="info-banner tip">🧥 Champs spécifiques aux <strong>vêtements</strong></div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Marque</label>
+        <input class="field-input" type="text" placeholder="ex: Nike, Zara, Sans marque">
+      </div>
+      <div class="field">
+        <label class="field-label">Genre</label>
+        <select class="field-input">
+          <option>Femme</option><option>Homme</option><option>Mixte</option><option>Enfant</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Matière principale</label>
+      <input class="field-input" type="text" placeholder="ex: 100% Coton, Polyester 80% / Coton 20%">
+    </div>`,
+
+  'mode_parfums': `
+    <div class="info-banner tip">🌸 Champs spécifiques aux <strong>parfums</strong></div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Marque <span class="req">*</span></label>
+        <input class="field-input" type="text" placeholder="ex: Dior, Chanel, YSL">
+      </div>
+      <div class="field">
+        <label class="field-label">Type</label>
+        <select class="field-input">
+          <option>Eau de parfum (EdP)</option>
+          <option>Eau de toilette (EdT)</option>
+          <option>Eau de cologne (EdC)</option>
+          <option>Extrait de parfum</option>
+          <option>Brume parfumée</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Note : ce produit n'a pas de variant taille ni couleur — seulement volume et marque.</label>
+    </div>`,
+
+  chaussures: `
+    <div class="info-banner tip">👟 Champs spécifiques aux <strong>chaussures</strong></div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Marque</label>
+        <input class="field-input" type="text" placeholder="ex: Nike, Adidas, New Balance">
+      </div>
+      <div class="field">
+        <label class="field-label">Genre</label>
+        <select class="field-input">
+          <option>Femme</option><option>Homme</option><option>Mixte</option><option>Enfant (20–35)</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Pointure min disponible</label>
+        <input class="field-input" type="number" placeholder="ex: 36" min="18" max="50">
+      </div>
+      <div class="field">
+        <label class="field-label">Pointure max disponible</label>
+        <input class="field-input" type="number" placeholder="ex: 45" min="18" max="50">
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Matière semelle</label>
+      <input class="field-input" type="text" placeholder="ex: Caoutchouc vulcanisé, EVA, Cuir">
+    </div>`,
+
+  tech: `
+    <div class="info-banner info">💻 Champs spécifiques à la <strong>technologie</strong></div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Marque <span class="req">*</span></label>
+        <input class="field-input" type="text" placeholder="ex: Apple, Samsung, Xiaomi">
+      </div>
+      <div class="field">
+        <label class="field-label">Modèle</label>
+        <input class="field-input" type="text" placeholder="ex: Galaxy S24 Ultra">
+      </div>
+    </div>
+    <div class="field-row-3">
+      <div class="field">
+        <label class="field-label">Stockage</label>
+        <select class="field-input">
+          <option>64 Go</option><option>128 Go</option><option>256 Go</option>
+          <option>512 Go</option><option>1 To</option><option>N/A</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">RAM</label>
+        <select class="field-input">
+          <option>4 Go</option><option>6 Go</option><option>8 Go</option>
+          <option>12 Go</option><option>16 Go</option><option>N/A</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Connectivité</label>
+        <select class="field-input">
+          <option>Wi-Fi seul</option><option>Wi-Fi + 4G</option><option>Wi-Fi + 5G</option><option>N/A</option>
+        </select>
+      </div>
+    </div>`,
+
+  hybride: `
+    <div class="info-banner" style="background:rgba(100,80,180,0.08);color:#6450B4;border:1px solid rgba(100,80,180,0.2)">⌚ Produit <strong>hybride</strong> — visible dans Mode <em>et</em> Technologie</div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Marque <span class="req">*</span></label>
+        <input class="field-input" type="text" placeholder="ex: Apple, Samsung, Garmin">
+      </div>
+      <div class="field">
+        <label class="field-label">Modèle</label>
+        <input class="field-input" type="text" placeholder="ex: Watch Series 9, Galaxy Watch 6">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Tour de poignet min (mm)</label>
+        <input class="field-input" type="number" placeholder="ex: 130">
+      </div>
+      <div class="field">
+        <label class="field-label">Tour de poignet max (mm)</label>
+        <input class="field-input" type="number" placeholder="ex: 215">
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Connectivité</label>
+      <select class="field-input">
+        <option>Bluetooth seul</option><option>Bluetooth + GPS</option>
+        <option>Bluetooth + GPS + NFC</option><option>Bluetooth + GPS + 4G (eSIM)</option>
+      </select>
+    </div>`,
+
+  digital: `
+    <div class="info-banner success">📡 <strong>Service digital</strong> — pas de stock physique, livraison instantanée</div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Plateforme <span class="req">*</span></label>
+        <select class="field-input" id="f-platform" onchange="onPlatformChange()">
+          <option value="">— Choisir —</option>
+          <optgroup label="Streaming">
+            <option>Netflix</option><option>Spotify</option>
+            <option>YouTube Premium</option><option>Apple Music</option>
+          </optgroup>
+          <optgroup label="Productivité">
+            <option>Microsoft 365</option><option>Canva Pro</option>
+            <option>Adobe Creative Cloud</option>
+          </optgroup>
+          <optgroup label="Gaming">
+            <option>PlayStation Plus</option><option>Xbox Game Pass</option>
+          </optgroup>
+          <optgroup label="Forfait data">
+            <option>Vodacom</option><option>Airtel</option>
+            <option>Africell</option><option>Orange</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Durée / Volume <span class="req">*</span></label>
+        <select class="field-input" id="f-duration">
+          <option>1 mois</option><option>3 mois</option>
+          <option>6 mois</option><option>1 an</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" id="field-operator" style="display:none">
+      <label class="field-label">Volume data</label>
+      <select class="field-input">
+        <option>1 Go</option><option>3 Go</option><option>5 Go</option>
+        <option>10 Go</option><option>20 Go</option><option>Illimité</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Mode de livraison</label>
+        <select class="field-input">
+          <option>Code d'activation</option>
+          <option>Compte configuré</option>
+          <option>Rechargement direct (numéro)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Disponibilité en RDC</label>
+        <select class="field-input">
+          <option>Confirmée ✓</option><option>À vérifier</option><option>Limitée</option>
+        </select>
+      </div>
+    </div>`,
+};
+
+const VARIANT_CONTENT = {
+  mode: `
+    <div class="variant-section">
+      <div class="variant-title">Tailles disponibles</div>
+      <div class="tags-wrap" id="tailles">
+        ${['XS','S','M','L','XL','XXL','XXXL'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="variant-title">Couleurs disponibles</div>
+      <div class="tags-wrap" id="couleurs">
+        ${[['#F2EDE4','Crème'],['#D4B49A','Beige'],['#C4512A','Terracotta'],['#3A4A3A','Vert kaki'],['#1A1410','Noir'],['#F5F0E8','Blanc'],['#6A8AAA','Bleu'],['#8B4A6A','Bordeaux']].map(([c,n])=>`<div class="color-swatch" style="background:${c}" title="${n}" onclick="toggleSwatch(this)"></div>`).join('')}
+      </div>
+      <div class="variant-title">Marques</div>
+      <div class="tags-wrap">
+        ${['Nike','Adidas','Zara','H&M','Levi\'s','Puma','Lacoste','Sans marque'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="variant-title">Matières</div>
+      <div class="tags-wrap">
+        ${['Coton','Polyester','Lin','Denim','Laine','Soie','Coton bio','Viscose'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+    </div>`,
+  'mode_parfums': `
+    <div class="variant-section">
+      <div class="variant-title">Volumes disponibles</div>
+      <div class="tags-wrap">
+        ${['30 ml','50 ml','75 ml','100 ml','150 ml','200 ml'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="info-banner tip">💡 Les parfums n'ont pas de variant couleur ni taille.</div>
+    </div>`,
+  chaussures: `
+    <div class="variant-section">
+      <div class="variant-title">Pointures — Enfants (20–35)</div>
+      <div class="tags-wrap">
+        ${Array.from({length:16},(_,i)=>i+20).map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="variant-title">Pointures — Adultes (36–49)</div>
+      <div class="tags-wrap">
+        ${Array.from({length:14},(_,i)=>i+36).map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="variant-title">Couleurs</div>
+      <div class="tags-wrap">
+        ${[['#1A1410','Noir'],['#F5F0E8','Blanc'],['#8B6355','Marron'],['#D4B49A','Beige'],['#888880','Gris'],['#C4512A','Rouge'],['#3A6AAA','Bleu']].map(([c,n])=>`<div class="color-swatch" style="background:${c}" title="${n}" onclick="toggleSwatch(this)"></div>`).join('')}
+      </div>
+      <div class="variant-title">Matière semelle</div>
+      <div class="tags-wrap">
+        ${['Cuir','Cuir synthétique','Toile','Caoutchouc','Mousse EVA','Daim','Mesh'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+    </div>`,
+  tech: `
+    <div class="variant-section">
+      <div class="variant-title">Stockage</div>
+      <div class="tags-wrap">
+        ${['64 Go','128 Go','256 Go','512 Go','1 To'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="variant-title">RAM</div>
+      <div class="tags-wrap">
+        ${['4 Go','6 Go','8 Go','12 Go','16 Go'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="variant-title">Couleurs</div>
+      <div class="tags-wrap">
+        ${[['#1A1410','Noir'],['#F5F0E8','Blanc'],['#3A6AAA','Bleu'],['#8B6AAA','Violet'],['#C4A86A','Or'],['#3A7D4E','Vert'],['#8B8888','Titane']].map(([c,n])=>`<div class="color-swatch" style="background:${c}" title="${n}" onclick="toggleSwatch(this)"></div>`).join('')}
+      </div>
+    </div>`,
+  hybride: `
+    <div class="variant-section">
+      <div class="variant-title">Taille bracelet (tour de poignet)</div>
+      <div class="tags-wrap">
+        ${['S (130–175 mm)','M (145–200 mm)','L (165–215 mm)','XL (185–230 mm)'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="variant-title">Matière bracelet</div>
+      <div class="tags-wrap">
+        ${['Silicone','Cuir','Acier inox','Nylon','Titane','Tissu tressé'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="variant-title">Couleurs</div>
+      <div class="tags-wrap">
+        ${[['#1A1410','Noir'],['#F5F0E8','Blanc'],['#888880','Gris'],['#3A6AAA','Bleu'],['#C4512A','Rouge'],['#C4A86A','Or rosé']].map(([c,n])=>`<div class="color-swatch" style="background:${c}" title="${n}" onclick="toggleSwatch(this)"></div>`).join('')}
+      </div>
+      <div class="variant-title">Connectivité</div>
+      <div class="tags-wrap">
+        ${['Bluetooth','GPS intégré','4G / eSIM','NFC','Wi-Fi'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+    </div>`,
+  digital: `
+    <div class="variant-section">
+      <div class="info-banner success">✅ <strong>Services digitaux</strong> : pas de stock physique. Les variantes sont la durée et le volume.</div>
+      <div class="variant-title">Durées proposées</div>
+      <div class="tags-wrap">
+        ${['1 mois','3 mois','6 mois','1 an'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+      <div class="variant-title" id="vt-data" style="display:none">Volumes data (Go)</div>
+      <div class="tags-wrap" id="vt-data-tags" style="display:none">
+        ${['1 Go','3 Go','5 Go','10 Go','20 Go','Illimité'].map(t=>`<div class="tag-toggle" onclick="toggleTag(this)">${t}</div>`).join('')}
+      </div>
+    </div>`,
+};
+
+/* ───────────────────────────────────────
+   STATE
+─────────────────────────────────────── */
+let currentStep = 1;
+let currentCat = '';
+let currentSubcat = '';
+
+/* ───────────────────────────────────────
+   STEP NAVIGATION
+─────────────────────────────────────── */
+function goToStep(n) {
+  document.getElementById('panel-' + currentStep).classList.add('hidden');
+  document.getElementById('step-' + currentStep).classList.remove('active');
+  if (currentStep < n) document.getElementById('step-' + currentStep).classList.add('done');
+
+  currentStep = n;
+  document.getElementById('panel-' + n).classList.remove('hidden');
+  document.getElementById('step-' + n).classList.add('active');
+  document.getElementById('step-' + n).classList.remove('done');
+
+  // lines
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById('line-' + i).classList.toggle('done', i < n);
+  }
+
+  const pct = (n / 5) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = 'Étape ' + n + ' sur 5';
+  document.getElementById('step-indicator').textContent = 'Étape ' + n + ' sur 5';
+  document.getElementById('btn-back').disabled = n === 1;
+  document.getElementById('btn-next').textContent = n === 5 ? 'Terminer ✓' : 'Suivant →';
+}
+function nextStep() { if (currentStep < 5) goToStep(currentStep + 1); }
+function prevStep() { if (currentStep > 1) goToStep(currentStep - 1); }
+
+/* ───────────────────────────────────────
+   CATEGORY CHANGE
+─────────────────────────────────────── */
+function onCatChange() {
+  const cat = document.getElementById('f-cat').value;
+  currentCat = cat;
+  currentSubcat = '';
+
+  // sous-catégories
+  const sub = document.getElementById('f-subcat');
+  sub.innerHTML = '<option value="">— Choisir —</option>';
+  if (SUBCATS[cat]) {
+    SUBCATS[cat].forEach(s => {
+      const o = document.createElement('option');
+      o.value = s; o.textContent = s;
+      sub.appendChild(o);
+    });
+    sub.disabled = false;
+  } else {
+    sub.disabled = true;
+  }
+
+  // champs dynamiques
+  renderDynamicFields(cat, '');
+
+  // variantes step 2
+  renderVariants(cat, '');
+
+  // stock : digital = illimité
+  const stockField = document.getElementById('field-stock');
+  const stockInput = document.getElementById('f-stock');
+  const stockLabel = document.getElementById('stock-label');
+  if (cat === 'digital') {
+    stockInput.value = '∞'; stockInput.disabled = true;
+    stockLabel.innerHTML = 'Stock <span style="font-size:11px;color:var(--success)">(service digital — illimité)</span>';
+  } else {
+    stockInput.value = ''; stockInput.disabled = false;
+    stockLabel.innerHTML = 'Stock <span class="req">*</span>';
+  }
+
+  // conseil sidebar
+  document.getElementById('tip-text').textContent = TIPS[cat] || 'Sélectionne une catégorie pour voir les conseils adaptés.';
+
+  updateChecklist();
+  updateSummary();
+}
+
+function onSubcatChange() {
+  const sub = document.getElementById('f-subcat').value;
+  currentSubcat = sub;
+
+  let key = currentCat;
+  if (currentCat === 'mode' && sub === 'Parfums & beauté') key = 'mode_parfums';
+
+  renderDynamicFields(key, sub);
+  renderVariants(key, sub);
+
+  // si data mobile : afficher volume
+  const isData = ['Forfait data Vodacom','Forfait data Airtel','Forfait data Africell','Forfait data Orange'].includes(sub);
+  const vtData = document.getElementById('vt-data');
+  const vtDataTags = document.getElementById('vt-data-tags');
+  if (vtData) { vtData.style.display = isData ? '' : 'none'; }
+  if (vtDataTags) { vtDataTags.style.display = isData ? '' : 'none'; }
+
+  updateSummary();
+}
+
+function onPlatformChange() {
+  const val = document.getElementById('f-platform')?.value || '';
+  const isOp = ['Vodacom','Airtel','Africell','Orange'].includes(val);
+  const f = document.getElementById('field-operator');
+  if (f) f.style.display = isOp ? '' : 'none';
+  const dur = document.getElementById('f-duration');
+  if (dur) {
+    dur.innerHTML = isOp
+      ? ['1 Go','3 Go','5 Go','10 Go','20 Go','Illimité'].map(v=>`<option>${v}</option>`).join('')
+      : ['1 mois','3 mois','6 mois','1 an'].map(v=>`<option>${v}</option>`).join('');
+    document.querySelector('[for="f-duration"], label').textContent = isOp ? 'Volume *' : 'Durée / Volume *';
+  }
+}
+
+function renderDynamicFields(key, sub) {
+  const el = document.getElementById('dynamic-fields');
+  if (DYNAMIC_FIELDS[key]) {
+    el.innerHTML = DYNAMIC_FIELDS[key];
+    el.classList.remove('hidden');
+  } else {
+    el.innerHTML = '';
+    el.classList.add('hidden');
+  }
+}
+
+function renderVariants(key, sub) {
+  const el = document.getElementById('variant-content');
+  if (VARIANT_CONTENT[key]) {
+    el.innerHTML = VARIANT_CONTENT[key];
+  } else {
+    el.innerHTML = '<div class="info-banner info">ℹ️ Sélectionne d\'abord une catégorie à l\'étape 1 pour voir les variantes adaptées.</div>';
+  }
+}
+
+/* ───────────────────────────────────────
+   TAG / COLOR TOGGLES
+─────────────────────────────────────── */
+function toggleTag(el) { el.classList.toggle('selected'); }
+function toggleSwatch(el) { el.classList.toggle('selected'); }
+function toggleLabel(el) {
+  el.classList.toggle('selected');
+  const isPromo = el.querySelector('.label-name')?.textContent === '% Promo';
+  if (isPromo) document.getElementById('promo-field').classList.toggle('hidden', !el.classList.contains('selected'));
+}
+
+/* ───────────────────────────────────────
+   CHECKLIST & SUMMARY
+─────────────────────────────────────── */
+function updateChecklist() {
+  const catVal = document.getElementById('f-cat').value;
+  setCheck('chk-cat', !!catVal);
+}
+function setCheck(id, done) {
+  const el = document.getElementById(id);
+  el.classList.toggle('done', done);
+  el.classList.toggle('pending', !done);
+  el.querySelector('.check-icon').textContent = done ? '✓' : (el.classList.contains('pending') ? '!' : '');
+}
+function updateSummary() {
+  const nom = document.getElementById('f-nom')?.value || '—';
+  const cat = document.getElementById('f-cat');
+  const subcat = document.getElementById('f-subcat');
+  const prix = document.getElementById('f-prix')?.value;
+
+  document.getElementById('s-nom').textContent = nom || '—';
+  document.getElementById('s-cat').textContent = cat?.options[cat.selectedIndex]?.text || '—';
+  document.getElementById('s-subcat').textContent = subcat?.value || '—';
+  document.getElementById('s-prix').textContent = prix ? '$' + parseFloat(prix).toFixed(2) : '—';
+
+  setCheck('chk-nom', !!(document.getElementById('f-nom')?.value));
+  setCheck('chk-prix', !!(prix && prix > 0));
+  setCheck('chk-desc', !!(document.getElementById('f-desc-court')?.value));
+  updateChecklist();
+}
+
+function countChars(id, counterId, max) {
+  const val = document.getElementById(id)?.value.length || 0;
+  document.getElementById(counterId).textContent = val + '/' + max;
+  updateSummary();
+}
+</script>
+</body>
+</html>

@@ -60,9 +60,13 @@ export function AdminSidebar() {
     },
   ];
 
+  const isPrincipal = currentAdmin.role === 'admin_principal';
+
   const visible = items.filter((item) => {
-    if (item.principalOnly && currentAdmin.role !== 'admin_principal') return false;
-    if (item.permission && !currentAdmin.permissions.includes(item.permission)) return false;
+    // Items réservés aux admins principaux
+    if (item.principalOnly && !isPrincipal) return false;
+    // L'admin principal voit tous les modules sans restriction de permissions
+    if (item.permission && !isPrincipal && !currentAdmin.permissions.includes(item.permission)) return false;
     return true;
   });
 

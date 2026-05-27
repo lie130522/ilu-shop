@@ -93,6 +93,7 @@ function normalizeConv(id: string, data: Record<string, unknown>): OrderConversa
     clientName: (data.clientName as string) ?? 'Client',
     status: (data.status as OrderStatus) ?? 'open',
     itemsLabel: (data.itemsLabel as string) ?? '',
+    cartSummary: (data.cartSummary as string | undefined) ?? undefined,
     totalUSD: (data.totalUSD as number) ?? 0,
     paymentMethod: (data.paymentMethod as string | undefined) ?? undefined,
     lastMessage: (data.lastMessage as string) ?? '',

@@ -3,24 +3,32 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useShop } from '@/components/ShopProvider';
-import { PRODUCTS } from '@/lib/products';
+import { useAllProducts } from '@/lib/hooks/useAllProducts';
 import { PriceDisplay } from '@/components/PriceDisplay';
 import { formatCDF, formatUSD, usdToCdf } from '@/lib/currency';
+import type { CartItem } from '@/lib/types';
+import type { Product } from '@/lib/types';
 
 export default function PanierClient() {
-  const { cart, removeFromCart, updateQuantity, clearCart } = useShop();
+  const { cart, removeFromCart, updateQuantity, clearCart, exchangeRate } = useShop();
   const router = useRouter();
+  const allProducts = useAllProducts();
 
+  // Résoudre chaque article du panier avec son produit
   const lines = cart
     .map((item) => {
-      const product = PRODUCTS.find((p) => p.id === item.productId);
+      const product = allProducts.find((p) => p.id === item.productId);
       return product ? { item, product } : null;
     })
-    .filter((x): x is { item: typeof cart[number]; product: typeof PRODUCTS[number] } => !!x);
+    .filter((x): x is { item: CartItem; product: Product } => !!x);
+
+  // Articles fantômes = dans le panier mais produit introuvable
+  const ghostItems = cart.filter((item) => !allProducts.find((p) => p.id === item.productId));
 
   const subtotal = lines.reduce((sum, { item, product }) => sum + product.priceUSD * item.quantity, 0);
+  const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
 
-  if (lines.length === 0) {
+  if (cart.length === 0) {
     return (
       <section className="max-w-3xl mx-auto px-6 py-32 text-center">
         <div className="font-display text-7xl text-beige">∅</div>
@@ -37,6 +45,36 @@ export default function PanierClient() {
           Explorer le catalogue
           <span className="transition-transform group-hover:translate-x-1">→</span>
         </Link>
+      </section>
+    );
+  }
+
+  // Articles résolus = 0 mais panier non-vide → Firestore encore en chargement
+  if (lines.length === 0 && ghostItems.length > 0) {
+    return (
+      <section className="max-w-3xl mx-auto px-6 py-32 text-center">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h1 className="font-display font-bold text-2xl text-ink mb-3">Articles introuvables</h1>
+        <p className="text-sm text-muted font-light max-w-md mx-auto mb-6">
+          {totalItems} article{totalItems > 1 ? 's' : ''} dans votre panier
+          {totalItems > 1 ? ' sont' : ' est'} associé
+          {totalItems > 1 ? 's' : ''} à des produits qui n&apos;existent plus.
+        </p>
+        <div className="flex gap-3 justify-center flex-wrap">
+          <button
+            type="button"
+            onClick={clearCart}
+            className="px-6 py-3 rounded-full bg-terra text-cream font-display text-xs font-semibold tracking-widest uppercase hover:bg-terra-dark transition-colors"
+          >
+            Vider le panier
+          </button>
+          <Link
+            href="/catalogue"
+            className="px-6 py-3 rounded-full border border-line text-ink font-display text-xs font-semibold tracking-widest uppercase hover:bg-bone transition-colors"
+          >
+            Explorer le catalogue
+          </Link>
+        </div>
       </section>
     );
   }
@@ -167,6 +205,27 @@ export default function PanierClient() {
               </div>
             </div>
           ))}
+
+          {/* Articles fantômes */}
+          {ghostItems.length > 0 && (
+            <div className="p-4 bg-gold/10 border border-gold/30 rounded-lg">
+              <p className="text-xs font-medium text-[#7A5A15] mb-2">
+                ⚠ {ghostItems.length} article{ghostItems.length > 1 ? 's' : ''} introuvable{ghostItems.length > 1 ? 's' : ''} (produit supprimé)
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {ghostItems.map((item) => (
+                  <button
+                    key={`${item.productId}-${item.size}-${item.color}`}
+                    type="button"
+                    onClick={() => removeFromCart(item.productId, item.size, item.color)}
+                    className="text-[11px] px-3 py-1.5 rounded-full bg-cream border border-line text-muted hover:text-terra transition-colors"
+                  >
+                    Supprimer ×
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Summary */}
@@ -176,7 +235,7 @@ export default function PanierClient() {
               Récapitulatif
             </h3>
             <div className="mt-6 space-y-3 pb-6 border-b border-cream/10">
-              <Row label="Sous-total" value={formatUSD(subtotal)} sub={formatCDF(usdToCdf(subtotal))} />
+              <Row label="Sous-total" value={formatUSD(subtotal)} sub={formatCDF(usdToCdf(subtotal, exchangeRate))} />
               <Row label="Livraison" value="Convenu en chat" small />
             </div>
             <div className="mt-6 flex items-end justify-between">
@@ -188,7 +247,7 @@ export default function PanierClient() {
                   {formatUSD(subtotal)}
                 </div>
                 <div className="font-display text-sm text-gold font-medium mt-1">
-                  ≈ {formatCDF(usdToCdf(subtotal))}
+                  ≈ {formatCDF(usdToCdf(subtotal, exchangeRate))}
                 </div>
               </div>
             </div>

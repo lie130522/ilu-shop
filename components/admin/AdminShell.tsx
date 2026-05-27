@@ -17,9 +17,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     if (!isPublic && !currentAdmin) {
-      router.replace('/connexion');
+      router.replace(`/admin/login?redirect=${encodeURIComponent(path)}`);
     }
-  }, [ready, currentAdmin, isPublic, router]);
+  }, [ready, currentAdmin, isPublic, path, router]);
 
   if (!ready) {
     return (

@@ -1,0 +1,572 @@
+=========================================================
+   ARBORESCENCE DES PRODUITS — SITE E-COMMERCE
+   Kinshasa, République Démocratique du Congo
+=========================================================
+
+Ce document décrit la structure complète de classification
+des produits du site. Il est organisé en CATÉGORIES MÈRES,
+chacune divisée en SOUS-CATÉGORIES, elles-mêmes contenant
+les PRODUITS FEUILLES (articles vendus réellement).
+
+Trois grandes catégories mères ont été définies :
+
+  [1] MODE
+  [2] TECHNOLOGIE
+  [3] SERVICES DIGITAUX
+
+À cela s'ajoute une zone spéciale :
+
+  [H] PRODUITS HYBRIDES — articles à double appartenance
+      (Mode ET Technologie simultanément)
+
+Chaque catégorie est expliquée ci-dessous avec ses produits,
+ses sous-catégories et ses règles de classification.
+
+
+=========================================================
+   COMMENT LIRE CE DOCUMENT
+=========================================================
+
+  Catégorie mère
+    └── Sous-catégorie
+          └── Produit feuille (article vendu)
+
+  [!] = Point d'attention important
+  [H] = Produit hybride (double appartenance)
+  [→] = Conseil ou renvoi vers une autre section
+
+
+=========================================================
+   [1] CATÉGORIE MÈRE : MODE
+=========================================================
+
+La catégorie Mode regroupe tous les articles liés à
+l'habillement, aux accessoires vestimentaires et à la
+beauté. Ces produits ont une composante physique et sont
+expédiés au client.
+
+─────────────────────────────────────────────────────────
+1.1  VÊTEMENTS
+─────────────────────────────────────────────────────────
+
+Définition : tout article porté sur le corps.
+
+Produits feuilles :
+  • T-shirts
+  • Chemises / chemisiers
+  • Pantalons
+  • Jeans
+  • Shorts
+  • Robes
+  • Jupes
+  • Vestes
+  • Manteaux / parkas
+  • Pulls / sweats / hoodies
+  • Sous-vêtements
+  • Maillots de bain
+
+Variants applicables :
+  - Taille     : XS / S / M / L / XL / XXL / XXXL
+  - Couleur    : Noir, Blanc, Gris, Bleu marine, Rouge,
+                 Beige, Vert kaki, Bordeaux, Rose, etc.
+  - Marque     : Nike, Adidas, Zara, H&M, Levi's, Puma,
+                 Lacoste, etc.
+  - Matière    : Coton, Polyester, Lin, Denim, Laine,
+                 Soie, Coton bio, Viscose, etc.
+
+[!] Un même modèle de t-shirt peut exister en plusieurs
+    combinaisons : taille M + couleur Rouge + marque Nike.
+    Chaque combinaison est une référence (SKU) distincte.
+
+
+─────────────────────────────────────────────────────────
+1.2  CHAUSSURES
+─────────────────────────────────────────────────────────
+
+Définition : tout article chaussant, pour enfants et adultes.
+
+Produits feuilles :
+  • Baskets / sneakers
+  • Sandales
+  • Tongs
+  • Bottes
+  • Bottines
+  • Escarpins
+  • Mocassins / slippers
+  • Chaussures de sport
+  • Chaussures enfants (pointures 20 à 35)
+
+Variants applicables :
+  - Pointure   :
+      Enfants   → 20 / 21 / 22 / 23 / 24 / 25 / 26 / 27 / 28
+      Enfants+  → 29 / 30 / 31 / 32 / 33 / 34 / 35
+      Adultes   → 36 / 37 / 38 / 39 / 40 / 41 / 42 / 43 /
+                  44 / 45 / 46 / 47 / 48 / 49
+  - Couleur    : Noir, Blanc, Marron, Beige, Gris, Rouge,
+                 Bleu, Multicolore, etc.
+  - Marque     : Nike, Adidas, Puma, New Balance, Timberland,
+                 Reebok, Converse, Vans, Clarks, etc.
+  - Matière    : Cuir, Cuir synthétique, Toile, Caoutchouc,
+                 Mousse EVA, Daim, Mesh (tissu respirant), etc.
+
+[!] La pointure est le variant principal des chaussures.
+    Elle ne s'applique qu'à cette sous-catégorie.
+
+
+─────────────────────────────────────────────────────────
+1.3  BIJOUX & ACCESSOIRES CLASSIQUES
+─────────────────────────────────────────────────────────
+
+Définition : articles de décoration corporelle sans
+             composante électronique ou connectée.
+
+[!] Les bijoux CONNECTÉS (bracelets fitness, montres
+    connectées) sont classés en section [H] — Hybrides,
+    et non ici.
+
+Produits feuilles :
+  • Boucles d'oreille (pendantes, créoles, puces)
+  • Bracelets classiques (métal, cuir, tissu, résine)
+  • Colliers / chaînes
+  • Pendentifs
+  • Bagues
+  • Montres mécaniques / à quartz (non connectées)
+  • Broches / épingles
+
+Variants applicables :
+  - Matière    : Or 18 carats, Argent 925, Acier inoxydable,
+                 Plaqué or, Cuir, Résine, Tissu, Perles,
+                 Cristal, etc.
+  - Couleur / finition : Doré, Argenté, Or rosé (rose gold),
+                         Noir mat, Bronze, etc.
+  - Taille     :
+      Bracelets → XS (≈15 cm) / S (≈17 cm) / M (≈19 cm) /
+                  L (≈21 cm) / Ajustable
+      Bagues    → 48 / 50 / 52 / 54 / 56 / 58 / 60
+                  (tour de doigt en millimètres)
+  - Marque     : Swarovski, Pandora, Tous, Fossil,
+                 Sans marque (générique), etc.
+
+
+─────────────────────────────────────────────────────────
+1.4  MAROQUINERIE
+─────────────────────────────────────────────────────────
+
+Définition : articles en cuir ou similicuir pour transporter
+             effets personnels.
+
+Produits feuilles :
+  • Sacs à main
+  • Sacs à bandoulière
+  • Sacs à dos mode (non techniques)
+  • Portefeuilles
+  • Porte-monnaie
+  • Ceintures
+  • Pochettes
+
+Variants applicables :
+  - Couleur    : Noir, Marron, Beige, Blanc, Rouge, etc.
+  - Matière    : Cuir véritable, Similicuir, Toile, Tissu, etc.
+  - Marque     : Gucci, Louis Vuitton, Michael Kors,
+                 Sans marque, etc.
+
+
+─────────────────────────────────────────────────────────
+1.5  PARFUMS & BEAUTÉ
+─────────────────────────────────────────────────────────
+
+Définition : produits de soin et de senteur.
+
+Produits feuilles :
+  • Eaux de parfum (EdP)
+  • Eaux de toilette (EdT)
+  • Eaux de cologne (EdC)
+  • Extraits de parfum
+  • Brumes parfumées
+  • Déodorants / anti-transpirants
+
+Variants applicables :
+  - Volume     : 30 ml / 50 ml / 75 ml / 100 ml /
+                 150 ml / 200 ml
+  - Type       : EdP / EdT / EdC / Extrait / Brume
+  - Marque     : Chanel, Dior, Yves Saint Laurent, Armani,
+                 Hugo Boss, Gucci, Versace, Lancôme,
+                 Burberry, etc.
+
+[!] Les parfums n'ont PAS de variant taille ni couleur.
+    Le volume (en ml) est leur seul axe de variation
+    quantitative.
+
+
+=========================================================
+   [2] CATÉGORIE MÈRE : TECHNOLOGIE
+=========================================================
+
+La catégorie Technologie regroupe les appareils électroniques
+et leurs accessoires. Ces produits ont une composante
+technique marquée et sont expédiés au client.
+
+[!] Certains produits tech à fort caractère "accessoire
+    de mode" (montres connectées, bracelets fitness,
+    casques audio stylisés) sont classés en section [H].
+
+─────────────────────────────────────────────────────────
+2.1  TÉLÉPHONIE
+─────────────────────────────────────────────────────────
+
+Produits feuilles :
+  • Smartphones
+  • Téléphones basiques (feature phones)
+  • Tablettes
+
+Variants applicables :
+  - Stockage   : 64 Go / 128 Go / 256 Go / 512 Go / 1 To
+  - RAM        : 4 Go / 6 Go / 8 Go / 12 Go / 16 Go
+  - Couleur    : Noir, Blanc, Bleu, Violet, Or, Vert,
+                 Rouge, Titane, etc.
+  - Marque     : Apple (iPhone), Samsung, Xiaomi, Tecno,
+                 Infinix, Oppo, Huawei, OnePlus, Realme, etc.
+
+[!] Pour les téléphones, la "taille" correspond au modèle
+    commercial (ex : iPhone 15 / 15 Plus / 15 Pro Max),
+    pas à une taille vestimentaire. Elle est gérée via
+    le nom du produit, pas via un variant "taille".
+
+
+─────────────────────────────────────────────────────────
+2.2  INFORMATIQUE
+─────────────────────────────────────────────────────────
+
+Produits feuilles :
+  • Laptops / ultrabooks
+  • PC de bureau
+  • Tablettes graphiques
+
+Variants applicables :
+  - Stockage       : 256 Go SSD / 512 Go SSD / 1 To SSD /
+                     2 To SSD / 4 To SSD
+  - RAM            : 8 Go / 16 Go / 32 Go / 64 Go
+  - Couleur        : Gris sidéral, Argent, Noir, Or,
+                     Blanc, Bleu, etc.
+  - Connectivité   : Wi-Fi seul / Wi-Fi + 4G / Wi-Fi + 5G
+  - Marque         : Apple (MacBook), Dell, HP, Lenovo,
+                     Asus, Acer, Microsoft (Surface),
+                     Samsung, Huawei, etc.
+
+
+─────────────────────────────────────────────────────────
+2.3  ACCESSOIRES TECH
+─────────────────────────────────────────────────────────
+
+Définition : tout accessoire destiné à compléter ou protéger
+             un appareil électronique.
+
+Produits feuilles :
+  • Chargeurs (filaires, sans fil)
+  • Câbles (USB-C, Lightning, Micro-USB)
+  • Coques et housses de protection
+  • Clés USB / disques SSD externes
+  • Claviers et souris sans fil
+  • Écrans / moniteurs
+  • Hubs et adaptateurs
+
+Variants applicables :
+  - Compatibilité  : modèle d'appareil visé
+  - Couleur        : Noir, Blanc, Transparent, etc.
+  - Marque         : Anker, Baseus, Samsung, Apple,
+                     Sans marque, etc.
+
+
+=========================================================
+   [H] PRODUITS HYBRIDES — MODE & TECHNOLOGIE
+=========================================================
+
+Certains produits appartiennent simultanément à la Mode
+ET à la Technologie. Ils ne peuvent pas être classés
+dans une seule branche sans perdre une partie de leur
+public cible.
+
+RÈGLE DE CLASSIFICATION :
+  Un produit hybride est enregistré UNE SEULE FOIS dans
+  la base de données, mais rattaché à DEUX chemins de
+  navigation :
+    → Mode > Accessoires connectés
+    → Technologie > Wearables
+
+  Ainsi, un client qui navigue depuis "Mode" trouve
+  l'article, tout comme celui qui navigue depuis
+  "Technologie". Aucune duplication de fiche produit
+  n'est nécessaire.
+
+─────────────────────────────────────────────────────────
+H.1  WEARABLES / ACCESSOIRES CONNECTÉS
+─────────────────────────────────────────────────────────
+
+Produits feuilles :
+  • Montre connectée (smartwatch)
+  • Bracelet de fitness / tracker d'activité
+  • Lunettes connectées
+  • Casque audio (haut de gamme, à forte identité visuelle)
+  • Écouteurs sans fil (avec design mode affirmé)
+
+Variants applicables :
+  - Taille (tour de poignet) :
+      S  → 130 – 175 mm
+      M  → 145 – 200 mm
+      L  → 165 – 215 mm
+      XL → 185 – 230 mm
+  - Matière du bracelet : Silicone, Cuir, Acier inox,
+                          Nylon, Titane, Tissu tressé, etc.
+  - Couleur    : Noir, Blanc, Gris, Bleu, Rouge, Vert,
+                 Or rosé, Argent, Multicolore, etc.
+  - Connectivité : Bluetooth / GPS intégré / 4G (eSIM) /
+                   NFC / Wi-Fi
+  - Marque     : Apple (Watch), Samsung (Galaxy Watch),
+                 Garmin, Fitbit, Xiaomi (Mi Band),
+                 Huawei, Polar, Suunto, etc.
+
+[→] Voir aussi section 2.3 (Accessoires tech) pour les
+    écouteurs sans marqueur de mode particulier.
+
+
+=========================================================
+   [3] CATÉGORIE MÈRE : SERVICES DIGITAUX
+=========================================================
+
+IMPORTANT — CE QUI DIFFÉRENCIE LES SERVICES DIGITAUX
+DES DEUX AUTRES CATÉGORIES :
+
+  • Pas de stock physique à gérer
+  • Pas d'expédition / pas de livraison physique
+  • Livraison instantanée (code ou rechargement direct)
+  • Pas de variant couleur, taille ou matière
+  • Les variants sont : durée, volume (Go), opérateur,
+    plateforme, type de livraison
+
+Cette catégorie répond à un besoin concret à Kinshasa :
+de nombreux clients n'ont pas accès à une carte bancaire
+internationale pour s'abonner directement à Netflix,
+Spotify, etc. Le site joue le rôle d'intermédiaire
+de confiance pour leur en faciliter l'accès.
+
+─────────────────────────────────────────────────────────
+3.1  ABONNEMENTS AUX PLATEFORMES DIGITALES
+─────────────────────────────────────────────────────────
+
+Définition : accès prépayé à un service en ligne, livré
+             sous forme de code d'activation ou de compte
+             configuré.
+
+Plateformes proposées :
+
+  STREAMING VIDÉO :
+    • Netflix      → 1 mois / 3 mois / 6 mois / 1 an
+    • Amazon Prime → 1 mois / 3 mois / 6 mois / 1 an
+    • Canal+       → 1 mois / 3 mois / 6 mois / 1 an
+
+  STREAMING MUSIQUE :
+    • Spotify      → 1 mois / 3 mois / 6 mois / 1 an
+    • Apple Music  → 1 mois / 3 mois / 6 mois / 1 an
+    • YouTube Premium → 1 mois / 3 mois / 6 mois
+
+  PRODUCTIVITÉ & CRÉATION :
+    • Microsoft 365    → 1 mois / 1 an
+    • Adobe Creative Cloud → 1 mois / 1 an
+    • Canva Pro        → 1 mois / 1 an
+
+  JEU VIDÉO :
+    • PlayStation Plus → 1 mois / 3 mois / 1 an
+    • Xbox Game Pass   → 1 mois / 3 mois / 1 an
+
+Variants applicables :
+  - Plateforme     : Netflix, Spotify, Canva Pro, etc.
+  - Durée          : 1 mois / 3 mois / 6 mois / 1 an
+  - Type de livraison :
+      → Code d'activation (le client reçoit un code
+        à entrer sur la plateforme)
+      → Compte configuré (le vendeur crée et livre
+        un compte prêt à l'emploi)
+
+[!] Vérifier systématiquement la disponibilité de chaque
+    plateforme en RDC avant de la référencer. Certains
+    services comme Netflix appliquent des restrictions
+    géographiques sur leurs codes d'activation.
+
+
+─────────────────────────────────────────────────────────
+3.2  FORFAITS DATA — OPÉRATEURS LOCAUX (KINSHASA)
+─────────────────────────────────────────────────────────
+
+Définition : rechargement de forfait internet mobile,
+             crédité directement sur le numéro du client.
+             Livraison instantanée après paiement confirmé.
+
+Opérateurs disponibles et forfaits proposés :
+
+  ┌──────────────┬────────────────────────────────────────┐
+  │ VODACOM      │ 1 Go / 3 Go / 5 Go / 10 Go / 20 Go   │
+  │              │ Forfait illimité (durée limitée)        │
+  ├──────────────┼────────────────────────────────────────┤
+  │ AIRTEL       │ 1 Go / 3 Go / 5 Go / 10 Go / 20 Go   │
+  │              │ Forfait illimité (durée limitée)        │
+  ├──────────────┼────────────────────────────────────────┤
+  │ AFRICELL     │ 1 Go / 3 Go / 5 Go / 10 Go / 20 Go   │
+  ├──────────────┼────────────────────────────────────────┤
+  │ ORANGE       │ 1 Go / 3 Go / 5 Go / 10 Go / 20 Go   │
+  └──────────────┴────────────────────────────────────────┘
+
+Variants applicables :
+  - Opérateur    : Vodacom / Airtel / Africell / Orange
+  - Volume       : 1 Go / 3 Go / 5 Go / 10 Go / 20 Go /
+                   Illimité
+  - Validité     : 24h / 7 jours / 30 jours
+                   (selon le forfait de l'opérateur)
+
+Informations requises au moment de la commande :
+  → Numéro de téléphone du bénéficiaire
+  → Opérateur du numéro (Vodacom, Airtel, Africell, Orange)
+  → Volume souhaité
+
+[!] Le numéro fourni doit correspondre à l'opérateur
+    sélectionné. Un rechargement Vodacom envoyé sur un
+    numéro Airtel sera perdu. Prévoir une validation
+    côté système avant confirmation de commande.
+
+[!] Les tarifs des forfaits varient régulièrement selon
+    les promotions des opérateurs. Prévoir un mécanisme
+    de mise à jour des prix facilement accessible côté
+    administration du site.
+
+
+=========================================================
+   RÉCAPITULATIF GÉNÉRAL DE L'ARBORESCENCE
+=========================================================
+
+SITE E-COMMERCE
+│
+├── [1] MODE
+│     ├── 1.1  Vêtements
+│     │         T-shirts, pantalons, vestes, robes,
+│     │         pulls, manteaux, shorts, sous-vêtements
+│     │
+│     ├── 1.2  Chaussures
+│     │         Baskets, sandales, bottes, escarpins,
+│     │         mocassins, chaussures enfants
+│     │
+│     ├── 1.3  Bijoux & accessoires classiques
+│     │         Boucles d'oreille, bracelets classiques,
+│     │         colliers, bagues, montres mécaniques
+│     │
+│     ├── 1.4  Maroquinerie
+│     │         Sacs à main, portefeuilles, ceintures,
+│     │         sacs à dos mode, pochettes
+│     │
+│     └── 1.5  Parfums & beauté
+│               Eaux de parfum, eaux de toilette,
+│               extraits, brumes, déodorants
+│
+├── [H] HYBRIDES (Mode + Technologie)
+│     └── H.1  Wearables / accessoires connectés
+│               Montre connectée, bracelet fitness,
+│               lunettes connectées, casque audio,
+│               écouteurs sans fil
+│
+├── [2] TECHNOLOGIE
+│     ├── 2.1  Téléphonie
+│     │         Smartphones, tablettes,
+│     │         téléphones basiques
+│     │
+│     ├── 2.2  Informatique
+│     │         Laptops, PC bureau, tablettes graphiques
+│     │
+│     └── 2.3  Accessoires tech
+│               Chargeurs, câbles, coques, clés USB,
+│               claviers, écrans, hubs
+│
+└── [3] SERVICES DIGITAUX
+      ├── 3.1  Abonnements plateformes
+      │         Netflix, Spotify, YouTube Premium,
+      │         Apple Music, Microsoft 365, Canva Pro,
+      │         Adobe CC, PlayStation Plus, Xbox Game Pass
+      │
+      └── 3.2  Forfaits data — opérateurs locaux
+                Vodacom, Airtel, Africell, Orange
+                (1 Go → 20 Go / Illimité)
+
+
+=========================================================
+   TABLEAU DES VARIANTS PAR CATÉGORIE
+=========================================================
+
+Catégorie           | Taille | Couleur | Marque | Matière | Volume | Stockage | RAM | Connectivité | Durée | Opérateur | Volume data
+--------------------|--------|---------|--------|---------|--------|----------|-----|--------------|-------|-----------|------------
+Vêtements           |   ✓   |    ✓    |   ✓    |    ✓    |        |          |     |              |       |           |
+Chaussures          |   ✓   |    ✓    |   ✓    |    ✓    |        |          |     |              |       |           |
+Bijoux classiques   |   ✓   |    ✓    |   ✓    |    ✓    |        |          |     |              |       |           |
+Maroquinerie        |        |    ✓    |   ✓    |    ✓    |        |          |     |              |       |           |
+Parfums             |        |         |   ✓    |         |   ✓    |          |     |              |       |           |
+Wearables [H]       |   ✓   |    ✓    |   ✓    |    ✓    |        |          |     |      ✓       |       |           |
+Téléphones          |        |    ✓    |   ✓    |         |        |    ✓     |  ✓  |              |       |           |
+Ordinateurs         |        |    ✓    |   ✓    |         |        |    ✓     |  ✓  |      ✓       |       |           |
+Accessoires tech    |        |    ✓    |   ✓    |         |        |          |     |              |       |           |
+Abonnements [3.1]   |        |         |        |         |        |          |     |              |   ✓   |           |
+Forfaits data [3.2] |        |         |        |         |        |          |     |              |   ✓   |     ✓     |      ✓
+
+
+=========================================================
+   RÈGLES IMPORTANTES DE GESTION
+=========================================================
+
+1. PRODUITS PHYSIQUES vs PRODUITS DIGITAUX
+   ─────────────────────────────────────────
+   Les catégories [1] Mode et [2] Technologie requièrent :
+     • Gestion d'un stock physique
+     • Processus d'expédition et de livraison
+     • Photos du produit réel
+
+   La catégorie [3] Services digitaux requiert :
+     • Pas de stock physique
+     • Livraison instantanée (code ou rechargement)
+     • Collecte du numéro ou email du bénéficiaire
+     • Partenariat avec les opérateurs ou revendeurs
+
+2. PRODUITS HYBRIDES [H]
+   ──────────────────────
+   Un produit hybride est enregistré UNE SEULE FOIS dans
+   la base de données. Son champ "catégories" contient
+   plusieurs valeurs, par exemple :
+     ["mode/accessoires", "technologie/wearables"]
+   Cela évite la duplication et les erreurs de stock.
+
+3. ATTRIBUTS UNIVERSELS vs SPÉCIFIQUES
+   ─────────────────────────────────────
+   Universels (communs à plusieurs catégories) :
+     → Couleur, Marque
+
+   Spécifiques à une seule catégorie :
+     → Pointure        : Chaussures uniquement
+     → Volume (ml)     : Parfums uniquement
+     → Stockage / RAM  : Téléphones & Ordinateurs
+     → Connectivité    : Ordinateurs & Wearables
+     → Durée           : Abonnements & Forfaits data
+     → Opérateur       : Forfaits data uniquement
+     → Volume (Go)     : Forfaits data uniquement
+
+   Conseil : définir ces attributs une seule fois dans
+   la base de données et les lier aux catégories concernées.
+   Cela simplifie la gestion et améliore les filtres
+   de recherche pour le client.
+
+4. NUMÉRO DE BÉNÉFICIAIRE (Forfaits data)
+   ─────────────────────────────────────────
+   Pour tout achat de forfait data, le site doit
+   impérativement collecter :
+     • Le numéro de téléphone du bénéficiaire
+     • L'opérateur de ce numéro
+   Une validation automatique de cohérence
+   (numéro = opérateur sélectionné) est fortement
+   recommandée avant confirmation de commande.
+
+=========================================================
+   FIN DU DOCUMENT
+=========================================================

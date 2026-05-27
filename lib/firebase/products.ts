@@ -7,6 +7,7 @@ import {
   collection,
   doc,
   setDoc,
+  deleteDoc,
   query,
   where,
   getDocs,
@@ -15,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './client';
-import type { Product, Category } from '@/lib/types';
+import type { Product, Category, ProductStatus } from '@/lib/types';
 import type { StoredProduct } from '@/lib/admin/product-store';
 
 // ── Upload image vers Firebase Storage ───────────────────────────────────────
@@ -23,14 +24,20 @@ import type { StoredProduct } from '@/lib/admin/product-store';
 /**
  * Uploads a base64 data URL to Firebase Storage.
  * Returns the public download URL.
+ * Content type is extracted explicitly from the data URL prefix to satisfaire
+ * les Storage Rules qui vérifient request.resource.contentType.
  */
 async function uploadProductImage(
   productId: string,
   imageId: string,
   dataUrl: string,
 ): Promise<string> {
+  // Extraire le MIME type depuis le data URL (ex: "data:image/jpeg;base64,..." → "image/jpeg")
+  const mimeMatch = dataUrl.match(/^data:([^;]+);/);
+  const contentType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+
   const imgRef = ref(storage, `products/${productId}/${imageId}`);
-  await uploadString(imgRef, dataUrl, 'data_url');
+  await uploadString(imgRef, dataUrl, 'data_url', { contentType });
   return getDownloadURL(imgRef);
 }
 
@@ -44,6 +51,8 @@ async function uploadProductImage(
 export async function saveProductToFirestore(product: StoredProduct): Promise<void> {
   // 1. Upload images to Firebase Storage (parallel)
   const imageUrls: string[] = [];
+  const uploadErrors: string[] = [];
+
   await Promise.all(
     product.images.map(async (img, idx) => {
       try {
@@ -51,14 +60,40 @@ export async function saveProductToFirestore(product: StoredProduct): Promise<vo
         if (!dataUrl) return;
         const url = await uploadProductImage(product.id, img.id || `img-${idx}`, dataUrl);
         imageUrls[idx] = url;
-      } catch (err) {
-        console.warn(`[products] image ${idx} upload failed:`, err);
-        // Continue without this image
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code ?? 'unknown';
+        const message = (err as { message?: string })?.message ?? String(err);
+        console.error(`[products] image ${idx} upload failed (${code}):`, message);
+        uploadErrors.push(`Image ${idx + 1}: ${code} — ${message}`);
       }
     }),
   );
 
-  // 2. Build Firestore document (Product-compatible shape)
+  // Si AUCUNE image n'a pu être uploadée alors qu'il y avait des images,
+  // on lance une erreur lisible pour que la UI puisse l'afficher.
+  if (product.images.length > 0 && imageUrls.filter(Boolean).length === 0) {
+    const firstError = uploadErrors[0] ?? 'erreur inconnue';
+    throw new Error(`STORAGE_UPLOAD_FAILED:${firstError}`);
+  }
+
+  // 2. Upload color images (si présentes)
+  const colorImageUrls: Record<string, string> = {};
+  if (product.colorImages && Object.keys(product.colorImages).length > 0) {
+    await Promise.all(
+      Object.entries(product.colorImages).map(async ([hex, dataUrl]) => {
+        if (!dataUrl) return;
+        try {
+          const sanitized = hex.replace('#', '');
+          const url = await uploadProductImage(product.id, `color-${sanitized}`, dataUrl);
+          colorImageUrls[hex] = url;
+        } catch (err) {
+          console.error(`[products] color image upload failed for ${hex}:`, err);
+        }
+      }),
+    );
+  }
+
+  // 3. Build Firestore document (Product-compatible shape)
   const firestoreDoc: Omit<Product, 'id'> & {
     id: string;
     source: 'admin';
@@ -77,11 +112,23 @@ export async function saveProductToFirestore(product: StoredProduct): Promise<vo
     subcategory: product.subcategory,
     tags: product.tags,
     status: product.status,
+    ...(product.badge !== undefined ? { badge: product.badge } : {}),
     stock: product.stock,
     sizes: product.sizes,
     // Normalize colors: StoredProduct uses { label, hex } → Product uses { name, hex }
     colors: product.colors.map((c) => ({ name: c.label, hex: c.hex })),
     images: imageUrls.filter(Boolean),
+    ...(Object.keys(colorImageUrls).length > 0 ? { colorImageUrls } : {}),
+    ...(product.brand                ? { brand: product.brand }               : {}),
+    ...(product.material             ? { material: product.material }         : {}),
+    ...(product.ram?.length          ? { ram: product.ram }                   : {}),
+    ...(product.connectivity?.length ? { connectivity: product.connectivity } : {}),
+    ...(product.genre                ? { genre: product.genre }               : {}),
+    ...(product.modele               ? { modele: product.modele }             : {}),
+    ...(product.platform             ? { platform: product.platform }         : {}),
+    ...(product.deliveryMode         ? { deliveryMode: product.deliveryMode } : {}),
+    ...(product.rdcAvailability      ? { rdcAvailability: product.rdcAvailability } : {}),
+    ...(product.descriptionTone      ? { descriptionTone: product.descriptionTone } : {}),
     rating: product.rating,
     reviewCount: product.reviewCount,
     source: 'admin',
@@ -109,6 +156,54 @@ export async function getProductBySlugFirestore(slug: string): Promise<Product |
   } catch (err) {
     console.error('[products] getProductBySlugFirestore error:', err);
     return null;
+  }
+}
+
+/**
+ * Supprime un produit de Firestore.
+ */
+export async function deleteProductFromFirestore(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'products', id));
+  } catch (err) {
+    console.error('[products] deleteProductFromFirestore error:', err);
+  }
+}
+
+/**
+ * Met à jour le statut (active/inactive/featured) d'un produit dans Firestore.
+ * Appelé depuis la page admin/produits quand l'admin clique "★ À la une" ou "Désactiver".
+ */
+export async function updateProductStatusInFirestore(
+  id: string,
+  status: ProductStatus,
+): Promise<void> {
+  try {
+    await setDoc(
+      doc(db, 'products', id),
+      { status, updatedAt: serverTimestamp() },
+      { merge: true },
+    );
+  } catch (err) {
+    console.error('[products] updateProductStatusInFirestore error:', err);
+  }
+}
+
+/**
+ * Met à jour le badge (new/sale/hot) d'un produit dans Firestore.
+ */
+export async function updateProductBadgeInFirestore(
+  id: string,
+  badge: 'new' | 'sale' | 'hot' | null,
+): Promise<void> {
+  try {
+    await setDoc(
+      doc(db, 'products', id),
+      { badge: badge ?? null, updatedAt: serverTimestamp() },
+      { merge: true },
+    );
+  } catch (err) {
+    console.error('[products] updateProductBadgeInFirestore error:', err);
   }
 }
 

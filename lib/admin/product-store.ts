@@ -7,20 +7,20 @@ const KEY = 'ilu_admin_products';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type ProductStatus = 'active' | 'inactive' | 'featured';
-export type ProductCategory = 'mode' | 'telephones' | 'ordinateurs' | 'tablettes';
+export type ProductCategory = 'mode' | 'technologie' | 'hybrides' | 'services';
 
 export const SUBCATEGORIES: Record<ProductCategory, string[]> = {
-  mode: ['Vêtements', 'Chaussures', 'Vestes & Manteaux', 'Accessoires', 'Sacs & Maroquinerie'],
-  telephones: ['Smartphones', 'Reconditionnés', 'Accessoires téléphonie'],
-  ordinateurs: ['Laptops', 'Ultrabooks', 'Gaming', 'Bureautique'],
-  tablettes: ['Tablettes standard', 'Tablettes Pro', 'Accessoires tablettes'],
+  mode: ['Vêtements', 'Chaussures', 'Bijoux & accessoires classiques', 'Maroquinerie', 'Parfums & beauté'],
+  technologie: ['Téléphonie', 'Informatique', 'Accessoires tech'],
+  hybrides: ['Wearables / accessoires connectés'],
+  services: ['Abonnements plateformes', 'Forfaits data'],
 };
 
 export const DEFAULT_SIZES: Record<ProductCategory, string[]> = {
-  mode: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-  telephones: ['64 Go', '128 Go', '256 Go', '512 Go'],
-  ordinateurs: ['8 Go RAM / 256 Go', '16 Go RAM / 512 Go', '32 Go RAM / 1 To'],
-  tablettes: ['64 Go', '128 Go', '256 Go'],
+  mode: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+  technologie: ['64 Go', '128 Go', '256 Go', '512 Go'],
+  hybrides: ['S (130-175 mm)', 'M (145-200 mm)', 'L (165-215 mm)', 'XL (185-230 mm)'],
+  services: ['1 mois', '3 mois', '6 mois', '1 an'],
 };
 
 export interface ProductColor {
@@ -79,8 +79,27 @@ export interface StoredProduct {
   images: StoredImage[];
   videos: StoredVideo[];
 
+  // ── Images par couleur (données brutes base64 avant upload Storage) ──
+  colorImages?: Record<string, string>; // hex → base64 data URL
+
+  // ── Spécifications produit ──
+  brand?: string;          // Marque
+  material?: string;       // Matière (vêtements, chaussures, bijoux, wearables…)
+  ram?: string[];          // RAM sélectionnées (téléphonie, informatique)
+  connectivity?: string[]; // Connectivité (informatique, wearables)
+
+  // ── Infos additionnelles ──
+  genre?: 'femme' | 'homme' | 'mixte' | 'enfant';
+  modele?: string;
+  platform?: string;
+  deliveryMode?: 'activation_code' | 'configured_account' | 'direct_recharge';
+  rdcAvailability?: 'confirmed' | 'to_verify' | 'limited';
+  descriptionTone?: 'editorial' | 'commercial' | 'luxe' | 'jeune';
+
   // ── Statut & meta ──
   status: ProductStatus;
+  /** Étiquette visible sur la carte produit (Nouveau / Promo / Tendance) */
+  badge?: 'new' | 'sale' | 'hot';
   rating: number;
   reviewCount: number;
   createdAt: string;
@@ -153,7 +172,7 @@ export function toPublicProduct(p: StoredProduct) {
     description: p.description,
     priceUSD: p.priceUSD,
     oldPriceUSD: p.oldPriceUSD,
-    category: p.category === 'mode' ? 'mode' : 'tech',
+    category: p.category,
     subcategory: p.subcategory,
     tags: p.tags,
     stock: p.stock,

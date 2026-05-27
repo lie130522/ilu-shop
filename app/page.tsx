@@ -1,15 +1,37 @@
+'use client';
+
 import Link from 'next/link';
-import { PRODUCTS, getFeaturedProducts, CATEGORIES } from '@/lib/products';
+import { useMemo } from 'react';
+import { useAllProducts } from '@/lib/hooks/useAllProducts';
 import { ProductCard } from '@/components/ProductCard';
 import { Marquee } from '@/components/Marquee';
 import { PriceDisplay } from '@/components/PriceDisplay';
 import { RecommendedSection, RecentlyViewedSection } from '@/components/RecommendedSection';
 import { BestSellersSection } from '@/components/BestSellersSection';
+import type { Product } from '@/lib/types';
 
 export default function HomePage() {
-  const featured = getFeaturedProducts();
-  const heroProduct = featured[0] ?? PRODUCTS[0];
-  const newArrivals = PRODUCTS.filter((p) => p.badge === 'new').slice(0, 3);
+  const allProducts = useAllProducts();
+
+  const featured = useMemo(() => allProducts.filter((p) => p.status === 'featured'), [allProducts]);
+  const heroProduct = featured[0] ?? allProducts[0];
+  const newArrivals = useMemo(() => allProducts.filter((p) => p.badge === 'new').slice(0, 3), [allProducts]);
+
+  // Comptes par catégorie calculés dynamiquement
+  const catCounts = useMemo(() => ({
+    mode:        allProducts.filter((p) => p.category === 'mode').length,
+    technologie: allProducts.filter((p) => p.category === 'technologie').length,
+    hybrides:    allProducts.filter((p) => p.category === 'hybrides').length,
+    services:    allProducts.filter((p) => p.category === 'services').length,
+  }), [allProducts]);
+
+  // Image représentative par catégorie (premier produit avec image)
+  const catImages = useMemo(() => ({
+    mode:        allProducts.find((p) => p.category === 'mode')?.images[0] ?? '',
+    technologie: allProducts.find((p) => p.category === 'technologie')?.images[0] ?? '',
+    hybrides:    allProducts.find((p) => p.category === 'hybrides')?.images[0] ?? '',
+    services:    allProducts.find((p) => p.category === 'services')?.images[0] ?? '',
+  }), [allProducts]);
 
   return (
     <>
@@ -53,7 +75,7 @@ export default function HomePage() {
 
               {/* Stats */}
               <div className="mt-16 flex items-center gap-10">
-                <Stat value="450+" label="Pièces sélection." />
+                <Stat value={`${allProducts.length > 0 ? allProducts.length + '+' : '—'}`} label="Pièces sélection." />
                 <div className="w-px h-12 bg-line" />
                 <Stat value="24h" label="Livraison Kinshasa" />
                 <div className="w-px h-12 bg-line" />
@@ -81,48 +103,43 @@ export default function HomePage() {
                 <div className="font-display text-sm font-semibold text-ink">Mode & Tech</div>
               </div>
 
-              {/* Hero product image — floats over the circle */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={heroProduct.images[0]}
-                alt={heroProduct.name}
-                className="relative z-10 max-h-[560px] lg:max-h-[680px] w-auto object-contain drop-shadow-2xl animate-float"
-              />
-
-              {/* New Arrival floating cards */}
-              <div className="absolute top-1/3 -left-2 lg:left-10 z-20 bg-cream border border-line rounded-md shadow-xl p-3 flex items-center gap-3 max-w-[200px] animate-fadeUp">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+              {/* Hero product image */}
+              {heroProduct?.images[0] ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={newArrivals[0]?.images[0]}
-                  alt=""
-                  className="w-14 h-14 object-cover rounded-sm"
+                  src={heroProduct.images[0]}
+                  alt={heroProduct.name}
+                  className="relative z-10 max-h-[560px] lg:max-h-[680px] w-auto object-contain drop-shadow-2xl animate-float"
                 />
-                <div>
-                  <div className="font-display text-[9px] tracking-widest uppercase text-terra font-semibold">
-                    New Arrival
-                  </div>
-                  <div className="font-display text-xs font-semibold leading-tight">
-                    {newArrivals[0]?.name}
+              ) : (
+                <div className="relative z-10 flex flex-col items-center gap-3 text-cream/60">
+                  <span className="font-display text-6xl">✦</span>
+                  <span className="font-display text-sm tracking-widest uppercase">ILU SHOP</span>
+                </div>
+              )}
+
+              {/* Floating new arrivals cards — uniquement si produits disponibles */}
+              {newArrivals[0] && (
+                <div className="absolute top-1/3 -left-2 lg:left-10 z-20 bg-cream border border-line rounded-md shadow-xl p-3 flex items-center gap-3 max-w-[200px] animate-fadeUp">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={newArrivals[0].images[0]} alt="" className="w-14 h-14 object-cover rounded-sm" />
+                  <div>
+                    <div className="font-display text-[9px] tracking-widest uppercase text-terra font-semibold">New Arrival</div>
+                    <div className="font-display text-xs font-semibold leading-tight">{newArrivals[0].name}</div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="absolute bottom-12 right-0 lg:right-6 z-20 bg-cream border border-line rounded-md shadow-xl p-3 flex items-center gap-3 max-w-[200px] animate-fadeUp" style={{ animationDelay: '200ms' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={newArrivals[1]?.images[0]}
-                  alt=""
-                  className="w-14 h-14 object-cover rounded-sm"
-                />
-                <div>
-                  <div className="font-display text-[9px] tracking-widest uppercase text-terra font-semibold">
-                    Featured
-                  </div>
-                  <div className="font-display text-xs font-semibold leading-tight">
-                    {newArrivals[1]?.name}
+              {newArrivals[1] && (
+                <div className="absolute bottom-12 right-0 lg:right-6 z-20 bg-cream border border-line rounded-md shadow-xl p-3 flex items-center gap-3 max-w-[200px] animate-fadeUp" style={{ animationDelay: '200ms' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={newArrivals[1].images[0]} alt="" className="w-14 h-14 object-cover rounded-sm" />
+                  <div>
+                    <div className="font-display text-[9px] tracking-widest uppercase text-terra font-semibold">Featured</div>
+                    <div className="font-display text-xs font-semibold leading-tight">{newArrivals[1].name}</div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -156,39 +173,10 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            <CategoryCard
-              href="/catalogue?cat=mode"
-              label="Mode"
-              caption="Vêtements, vestes, sacs, accessoires"
-              count={CATEGORIES[0].count}
-              image={PRODUCTS.find((p) => p.category === 'mode')?.images[0] ?? ''}
-              tone="terra"
-              large
-            />
-            <CategoryCard
-              href="/catalogue?cat=telephones"
-              label="Téléphones"
-              caption="Smartphones et accessoires"
-              count={CATEGORIES[1].count}
-              image={PRODUCTS.find((p) => p.category === 'telephones')?.images[0] ?? ''}
-              tone="ink"
-            />
-            <CategoryCard
-              href="/catalogue?cat=ordinateurs"
-              label="Ordinateurs"
-              caption="Laptops, ultrabooks, bureautique"
-              count={CATEGORIES[2].count}
-              image={PRODUCTS.find((p) => p.category === 'ordinateurs')?.images[0] ?? ''}
-              tone="beige"
-            />
-            <CategoryCard
-              href="/catalogue?cat=tablettes"
-              label="Tablettes"
-              caption="iPad et tablettes pro"
-              count={CATEGORIES[3].count}
-              image={PRODUCTS.find((p) => p.category === 'tablettes')?.images[0] ?? ''}
-              tone="gold"
-            />
+            <CategoryCard href="/catalogue?cat=mode"        label="Mode"             caption="Vêtements, chaussures, bijoux, parfums"    count={catCounts.mode}        image={catImages.mode}        tone="terra" large />
+            <CategoryCard href="/catalogue?cat=technologie" label="Technologie"      caption="Smartphones, laptops, accessoires tech"    count={catCounts.technologie} image={catImages.technologie} tone="ink" />
+            <CategoryCard href="/catalogue?cat=hybrides"    label="Wearables"        caption="Montres connectées, bracelets fitness"     count={catCounts.hybrides}    image={catImages.hybrides}    tone="beige" />
+            <CategoryCard href="/catalogue?cat=services"    label="Services digitaux" caption="Netflix, Spotify, forfaits data RDC"      count={catCounts.services}    image={catImages.services}    tone="gold" />
           </div>
         </div>
       </section>
@@ -205,8 +193,7 @@ export default function HomePage() {
                 À la une<span className="text-terra">.</span>
               </h2>
               <p className="mt-3 text-sm font-light text-muted max-w-md">
-                Pièces choisies à la main par l'équipe ILU SHOP — produits détourés, prêts à
-                porter.
+                Pièces choisies à la main par l&apos;équipe ILU SHOP — produits détourés, prêts à porter.
               </p>
             </div>
             <Link
@@ -218,10 +205,111 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-12">
-            {featured.slice(0, 4).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+          {featured.length === 0 ? (
+            <div className="py-16 text-center text-muted font-display text-sm">
+              Aucun produit à la une pour l&apos;instant.
+            </div>
+          ) : (
+            <div className={`grid grid-cols-2 gap-x-5 gap-y-12 ${featured.length >= 4 ? 'lg:grid-cols-4' : featured.length === 3 ? 'lg:grid-cols-3' : featured.length === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-1 max-w-xs mx-auto'}`}>
+              {featured.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━ SERVICES DIGITAUX ━━━━━━━━━━━━━ */}
+      <section className="py-24 bg-bone overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+            {/* ── Colonne gauche ── */}
+            <div>
+              <span className="font-display text-[10px] tracking-[0.35em] uppercase text-terra font-semibold">
+                — Services digitaux
+              </span>
+              <h2 className="mt-4 font-display font-extrabold text-ink leading-[0.92] text-[clamp(36px,5vw,64px)]">
+                Pas de carte<br />bancaire ?
+              </h2>
+              <h2 className="font-display font-extrabold text-terra leading-[0.92] text-[clamp(36px,5vw,64px)]">
+                Pas de problème.
+              </h2>
+              <p className="mt-6 text-sm font-light text-ink-light max-w-md leading-relaxed">
+                Netflix, Spotify, Adobe, Microsoft 365 — obtenez vos abonnements en quelques
+                minutes, payés en Mobile Money ou cash. Livraison instantanée.
+              </p>
+
+              {/* Pills des plateformes */}
+              <div className="flex flex-wrap gap-2 mt-6">
+                {['Netflix', 'Spotify', 'YouTube Premium', 'Canva Pro', 'Microsoft 365', 'Adobe CC', 'Xbox Game Pass'].map((s) => (
+                  <span
+                    key={s}
+                    className="text-xs font-medium px-4 py-1.5 rounded-full border border-line bg-cream text-ink"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+
+              <Link
+                href="/catalogue?cat=services"
+                className="inline-flex items-center gap-3 mt-10 bg-ink text-cream font-display text-[11px] font-bold tracking-[0.25em] uppercase px-8 py-4 rounded-full hover:bg-terra transition-colors duration-300"
+              >
+                Voir tous les abonnements →
+              </Link>
+            </div>
+
+            {/* ── Colonne droite — opérateurs data ── */}
+            <div>
+              <p className="font-display text-[10px] tracking-[0.35em] uppercase text-muted font-semibold mb-5">
+                Recharger sa data
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { name: 'Vodacom',  abbr: 'VOD', color: 'bg-[#E2001A]', volumes: ['1 Go', '3 Go', '5 Go', '10 Go', '20 Go'] },
+                  { name: 'Airtel',   abbr: 'AIR', color: 'bg-[#E2001A]', volumes: ['1 Go', '3 Go', '5 Go', '10 Go', '20 Go'] },
+                  { name: 'Africell', abbr: 'AFC', color: 'bg-[#003087]', volumes: ['1 Go', '3 Go', '5 Go', '10 Go'] },
+                  { name: 'Orange',   abbr: 'ORA', color: 'bg-[#FF6600]', volumes: ['1 Go', '3 Go', '5 Go', '10 Go'] },
+                ].map((op) => (
+                  <div
+                    key={op.name}
+                    className="bg-cream border border-line rounded-xl p-4 hover:border-terra/40 hover:shadow-sm transition-all"
+                  >
+                    {/* Logo + nom */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-lg ${op.color} flex items-center justify-center shrink-0`}>
+                        <span className="text-white font-display font-extrabold text-[10px] tracking-wider">
+                          {op.abbr}
+                        </span>
+                      </div>
+                      <span className="font-display font-bold text-sm text-ink">{op.name}</span>
+                    </div>
+
+                    {/* Volumes */}
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {op.volumes.map((v) => (
+                        <span
+                          key={v}
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-bone border border-line text-muted"
+                        >
+                          {v}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* CTA */}
+                    <Link
+                      href="/catalogue?cat=services"
+                      className="font-display text-[10px] font-bold tracking-widest uppercase text-terra hover:text-terra-dark transition-colors"
+                    >
+                      Recharger →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -238,7 +326,7 @@ export default function HomePage() {
               <span className="text-terra-light">a une histoire.</span>
             </h3>
             <p className="mt-8 text-cream/70 font-light max-w-md leading-relaxed">
-              ILU SHOP, c'est l'idée que vos vêtements et vos outils tech doivent vous ressembler.
+              ILU SHOP, c&apos;est l&apos;idée que vos vêtements et vos outils tech doivent vous ressembler.
               Une sélection humaine, un chat humain, une livraison humaine.
             </p>
             <Link
@@ -250,26 +338,10 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <FeatureCard
-              icon="◯"
-              title="Bi-Devise"
-              desc="Prix affichés en USD et CDF, taux mis à jour quotidiennement par notre équipe."
-            />
-            <FeatureCard
-              icon="✦"
-              title="Chat Commande"
-              desc="Pas de tunnel de paiement froid. On discute, on s'entend, on livre."
-            />
-            <FeatureCard
-              icon="□"
-              title="Livraison RDC"
-              desc="Kinshasa sous 24h. Reste du pays : nous convenons des modalités ensemble."
-            />
-            <FeatureCard
-              icon="△"
-              title="Mobile Money"
-              desc="M-Pesa, Airtel Money, Orange Money, virement, cash — vous choisissez."
-            />
+            <FeatureCard icon="◯" title="Bi-Devise" desc="Prix affichés en USD et CDF, taux mis à jour quotidiennement par notre équipe." />
+            <FeatureCard icon="✦" title="Chat Commande" desc="Pas de tunnel de paiement froid. On discute, on s'entend, on livre." />
+            <FeatureCard icon="□" title="Livraison RDC" desc="Kinshasa sous 24h. Reste du pays : nous convenons des modalités ensemble." />
+            <FeatureCard icon="△" title="Mobile Money" desc="M-Pesa, Airtel Money, Orange Money, virement, cash — vous choisissez." />
           </div>
         </div>
       </section>
@@ -283,8 +355,10 @@ export default function HomePage() {
       {/* ━━━━━━━━━━━━━ BEST SELLERS ━━━━━━━━━━━━━ */}
       <BestSellersSection />
 
-      {/* ━━━━━━━━━━━━━ HERO PRODUIT SECONDAIRE (LOCO style) ━━━━━━━━━━━━━ */}
-      <SecondaryHero product={featured[1] ?? PRODUCTS[1]} />
+      {/* ━━━━━━━━━━━━━ HERO PRODUIT SECONDAIRE ━━━━━━━━━━━━━ */}
+      {(featured[1] ?? allProducts[1]) && (
+        <SecondaryHero product={featured[1] ?? allProducts[1]} />
+      )}
 
       {/* ━━━━━━━━━━━━━ RECOMMANDATIONS PERSONNALISÉES ━━━━━━━━━━━━━ */}
       <RecentlyViewedSection />
@@ -297,29 +371,16 @@ function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div>
       <div className="font-display text-3xl font-extrabold text-ink leading-none">{value}</div>
-      <div className="mt-2 font-display text-[10px] tracking-widest uppercase text-muted">
-        {label}
-      </div>
+      <div className="mt-2 font-display text-[10px] tracking-widest uppercase text-muted">{label}</div>
     </div>
   );
 }
 
 function CategoryCard({
-  href,
-  label,
-  caption,
-  count,
-  image,
-  tone,
-  large = false,
+  href, label, caption, count, image, tone, large = false,
 }: {
-  href: string;
-  label: string;
-  caption: string;
-  count: number;
-  image: string;
-  tone: 'terra' | 'ink' | 'beige' | 'gold';
-  large?: boolean;
+  href: string; label: string; caption: string; count: number;
+  image: string; tone: 'terra' | 'ink' | 'beige' | 'gold'; large?: boolean;
 }) {
   const toneMap = {
     terra: { bg: 'bg-terra', text: 'text-cream', accent: 'text-cream/70' },
@@ -332,25 +393,23 @@ function CategoryCard({
   return (
     <Link
       href={href}
-      className={`group ${t.bg} ${t.text} rounded-md p-6 flex flex-col justify-between overflow-hidden relative transition-transform hover:-translate-y-1 duration-500 ease-smooth ${
-        large ? 'lg:col-span-1 lg:row-span-1 min-h-[280px]' : 'min-h-[280px]'
-      }`}
+      className={`group ${t.bg} ${t.text} rounded-md p-6 flex flex-col justify-between overflow-hidden relative transition-transform hover:-translate-y-1 duration-500 ease-smooth ${large ? 'lg:col-span-1 lg:row-span-1 min-h-[280px]' : 'min-h-[280px]'}`}
     >
       <div className="relative z-10">
         <div className={`font-display text-[10px] tracking-[0.3em] uppercase font-semibold ${t.accent}`}>
-          {count} produits
+          {count > 0 ? `${count} produits` : 'Explorer'}
         </div>
         <div className="font-display text-3xl font-extrabold mt-2">{label}</div>
         <div className={`text-xs font-light mt-1 ${t.accent}`}>{caption}</div>
       </div>
 
       <div className="relative z-10 flex items-center justify-between">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={image}
-          alt=""
-          className="w-32 h-32 object-cover rounded transition-transform duration-700 group-hover:scale-110"
-        />
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={image} alt="" className="w-32 h-32 object-cover rounded transition-transform duration-700 group-hover:scale-110" />
+        ) : (
+          <div className="w-32 h-32 rounded opacity-20 bg-current" />
+        )}
         <span className="font-display text-xs font-semibold tracking-widest uppercase opacity-80 group-hover:opacity-100 transition-opacity">
           Explorer →
         </span>
@@ -369,7 +428,7 @@ function FeatureCard({ icon, title, desc }: { icon: string; title: string; desc:
   );
 }
 
-function SecondaryHero({ product }: { product: typeof PRODUCTS[number] }) {
+function SecondaryHero({ product }: { product: Product }) {
   return (
     <section className="py-32 bg-cream relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 lg:px-10">
@@ -378,12 +437,14 @@ function SecondaryHero({ product }: { product: typeof PRODUCTS[number] }) {
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-[380px] h-[380px] lg:w-[500px] lg:h-[500px] rounded-full bg-beige" />
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={product.images[0]}
-              alt={product.name}
-              className="relative z-10 max-h-[400px] lg:max-h-[560px] w-auto object-contain animate-float"
-            />
+            {product.images[0] && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={product.images[0]}
+                alt={product.name}
+                className="relative z-10 max-h-[400px] lg:max-h-[560px] w-auto object-contain animate-float"
+              />
+            )}
           </div>
 
           <div>
@@ -395,11 +456,9 @@ function SecondaryHero({ product }: { product: typeof PRODUCTS[number] }) {
               THE <span className="text-terra">VIBES.</span>
             </h3>
             <p className="mt-6 text-base font-light text-ink-light max-w-md">{product.description}</p>
-
             <div className="mt-8">
               <PriceDisplay usd={product.priceUSD} oldUsd={product.oldPriceUSD} size="lg" />
             </div>
-
             <Link
               href={`/produit/${product.slug}`}
               className="inline-flex items-center gap-3 mt-10 bg-ink hover:bg-terra text-cream font-display text-xs font-semibold tracking-[0.25em] uppercase px-8 py-4 rounded-full transition-colors duration-300 group"

@@ -1,0 +1,188 @@
+=========================================================
+   CATÉGORISATIONS DES VARIANTS PRODUITS — SITE E-COMMERCE
+=========================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. VÊTEMENTS (t-shirts, pantalons, vestes, pulls, etc.)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TAILLE :
+  XS / S / M / L / XL / XXL / XXXL
+
+COULEUR :
+  Noir, Blanc, Gris, Bleu marine, Rouge, Beige, Vert kaki,
+  Bordeaux, Jaune, Orange, Rose, Multicolore, etc.
+
+MARQUE :
+  Nike, Adidas, Zara, H&M, Levi's, Puma, Lacoste, etc.
+
+MATIÈRE :
+  Coton, Polyester, Lin, Denim, Laine, Soie,
+  Coton bio, Viscose, etc.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. CHAUSSURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+POINTURE (enfants → adultes) :
+  Enfants  : 20 / 21 / 22 / 23 / 24 / 25 / 26 / 27 / 28
+  Enfants+ : 29 / 30 / 31 / 32 / 33 / 34 / 35
+  Adultes  : 36 / 37 / 38 / 39 / 40 / 41 / 42 / 43 / 44 / 45 / 46 / 47 / 48 / 49
+
+COULEUR :
+  Noir, Blanc, Marron, Beige, Gris, Rouge, Bleu, Multicolore, etc.
+
+MARQUE :
+  Nike, Adidas, Puma, New Balance, Timberland, Reebok,
+  Converse, Vans, Clarks, etc.
+
+MATIÈRE (tige / semelle) :
+  Cuir, Cuir synthétique, Toile, Caoutchouc, Mousse EVA,
+  Daim, Mesh (tissu respirant), etc.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. PARFUMS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+VOLUME :
+  30 ml / 50 ml / 75 ml / 100 ml / 150 ml / 200 ml
+
+TYPE :
+  Eau de parfum (EdP)
+  Eau de toilette (EdT)
+  Eau de cologne (EdC)
+  Extrait de parfum
+  Brume parfumée
+
+MARQUE :
+  Chanel, Dior, Yves Saint Laurent, Armani, Hugo Boss,
+  Gucci, Versace, Lancôme, Burberry, etc.
+
+  NB : Pas de variant couleur ni taille pour les parfums.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. BIJOUX — Boucles d'oreille, bracelets (non connectés),
+            colliers, bagues, etc.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MATIÈRE :
+  Or 18 carats, Argent 925, Acier inoxydable, Plaqué or,
+  Cuir, Résine, Tissu, Perles, Cristal, etc.
+
+COULEUR / FINITION :
+  Doré, Argenté, Or rosé (rose gold), Noir mat, Bronze, etc.
+
+TAILLE (bracelets et bagues) :
+  Bracelets : XS (≈15 cm) / S (≈17 cm) / M (≈19 cm) / L (≈21 cm) / Ajustable
+  Bagues    : 48 / 50 / 52 / 54 / 56 / 58 / 60 (tour de doigt en mm)
+
+MARQUE :
+  Swarovski, Pandora, Tous, Fossil, Sans marque (générique), etc.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. TÉLÉPHONES / SMARTPHONES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STOCKAGE INTERNE :
+  64 Go / 128 Go / 256 Go / 512 Go / 1 To
+
+RAM :
+  4 Go / 6 Go / 8 Go / 12 Go / 16 Go
+
+COULEUR :
+  Noir, Blanc, Bleu, Violet, Or, Vert, Rouge, Titane, etc.
+
+MARQUE :
+  Apple (iPhone), Samsung, Xiaomi, Tecno, Infinix, Oppo,
+  Huawei, OnePlus, Realme, etc.
+
+  NB : Pas de variant "taille vêtement" — la taille ici
+       correspond au modèle (ex : iPhone 15 / 15 Plus / 15 Pro).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. ORDINATEURS (laptops, tablettes, desktops)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STOCKAGE :
+  256 Go SSD / 512 Go SSD / 1 To SSD / 2 To SSD / 4 To SSD
+
+RAM :
+  8 Go / 16 Go / 32 Go / 64 Go
+
+COULEUR :
+  Gris sidéral, Argent, Noir, Or, Blanc, Bleu, etc.
+
+CONNECTIVITÉ :
+  Wi-Fi seul / Wi-Fi + 4G / Wi-Fi + 5G
+
+MARQUE :
+  Apple (MacBook), Dell, HP, Lenovo, Asus, Acer,
+  Microsoft (Surface), Samsung, Huawei, etc.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. BRACELETS CONNECTÉS / MONTRES INTELLIGENTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TAILLE (tour de poignet) :
+  S  : 130 – 175 mm
+  M  : 145 – 200 mm
+  L  : 165 – 215 mm
+  XL : 185 – 230 mm
+
+MATIÈRE DU BRACELET :
+  Silicone / Cuir / Acier inoxydable / Nylon / Titane /
+  Tissu tressé / Caoutchouc fluoré, etc.
+
+COULEUR :
+  Noir, Blanc, Gris, Bleu, Rouge, Vert, Or rosé, Argent,
+  Jaune, Orange, Multicolore, etc.
+
+CONNECTIVITÉ :
+  Bluetooth / GPS intégré / 4G (eSIM) / NFC / Wi-Fi
+
+MARQUE :
+  Apple (Watch), Samsung (Galaxy Watch), Garmin,
+  Fitbit, Xiaomi (Mi Band), Huawei, Polar, Suunto, etc.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   RÉCAPITULATIF — AXES DE VARIATION PAR CATÉGORIE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Catégorie              | Taille | Couleur | Marque | Matière | Volume | Stockage | RAM | Connectivité
+-----------------------|--------|---------|--------|---------|--------|----------|-----|-------------
+Vêtements              |   ✓   |    ✓    |   ✓    |    ✓    |        |          |     |
+Chaussures             |   ✓   |    ✓    |   ✓    |    ✓    |        |          |     |
+Parfums                |        |         |   ✓    |         |   ✓    |          |     |
+Bijoux                 |   ✓   |    ✓    |   ✓    |    ✓    |        |          |     |
+Téléphones             |        |    ✓    |   ✓    |         |        |    ✓     |  ✓  |
+Ordinateurs            |        |    ✓    |   ✓    |         |        |    ✓     |  ✓  |      ✓
+Bracelets connectés    |   ✓   |    ✓    |   ✓    |    ✓    |        |          |     |      ✓
+
+
+=========================================================
+   NOTE TECHNIQUE
+=========================================================
+
+Attributs UNIVERSELS (partagés entre plusieurs catégories) :
+  → Couleur, Marque
+
+Attributs SPÉCIFIQUES à une catégorie :
+  → Volume (ml)        : Parfums uniquement
+  → Pointure           : Chaussures uniquement
+  → Stockage / RAM     : Téléphones & Ordinateurs
+  → Connectivité       : Ordinateurs & Bracelets connectés
+  → Tour de poignet    : Bracelets connectés uniquement
+
+Conseil : dans votre base de données, définir les attributs
+universels une seule fois et les réutiliser via des relations,
+pour éviter la duplication et faciliter les filtres de recherche.
+
+=========================================================

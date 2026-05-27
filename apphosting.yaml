@@ -10,7 +10,7 @@ env:
 
   # Admin principal email (doit correspondre exactement au compte Google)
   - variable: NEXT_PUBLIC_ADMIN_EMAIL
-    value: lievinkamba1@gmail.com
+    value: lievinkabamba1@gmail.com
 
   # Firebase Client SDK (public — exposé au navigateur)
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY

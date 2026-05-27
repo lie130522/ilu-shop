@@ -29,7 +29,9 @@ const app: FirebaseApp = isConfigured
   : (getApps().length ? getApp() : initializeApp({ apiKey: 'not-configured', projectId: 'not-configured', appId: 'not-configured' }));
 
 const auth: Auth = getAuth(app);
-const db: Firestore = getFirestore(app);
+// Base de données nommée 'default' (sans parenthèses) — spécifier explicitement
+// car getFirestore(app) cherche '(default)' avec parenthèses par défaut
+const db: Firestore = getFirestore(app, 'default');
 const storage: FirebaseStorage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });

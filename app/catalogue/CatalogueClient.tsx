@@ -1,21 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { PRODUCTS, CATEGORIES } from '@/lib/products';
+import { CATEGORIES } from '@/lib/products';
+import { useAllProducts } from '@/lib/hooks/useAllProducts';
 import { ProductCard } from '@/components/ProductCard';
 import type { Category } from '@/lib/types';
 
 type SortKey = 'popular' | 'newest' | 'priceAsc' | 'priceDesc';
-
-const ALL_COLORS = Array.from(
-  new Map(
-    PRODUCTS.flatMap((p) => p.colors ?? []).map((c) => [c.hex, c]),
-  ).values(),
-);
-const ALL_SIZES = Array.from(new Set(PRODUCTS.flatMap((p) => p.sizes ?? [])));
-const MAX_PRICE = Math.ceil(Math.max(...PRODUCTS.map((p) => p.priceUSD)) / 100) * 100;
 
 interface CatalogueClientProps {
   initialCategory?: Category;
@@ -27,19 +20,54 @@ export default function CatalogueClient({ initialCategory, initialSubcategory, h
   const searchParams = useSearchParams();
   const initialCat = initialCategory ?? (searchParams.get('cat') as Category | null);
 
+  // Produits fusionnés : seed + Firestore (temps réel)
+  const allProducts = useAllProducts();
+
+  // Comptes par catégorie dynamiques
+  const catCounts = useMemo(() => ({
+    mode:        allProducts.filter((p) => p.category === 'mode').length,
+    technologie: allProducts.filter((p) => p.category === 'technologie').length,
+    hybrides:    allProducts.filter((p) => p.category === 'hybrides').length,
+    services:    allProducts.filter((p) => p.category === 'services').length,
+  }), [allProducts]);
+
+  // Dérivés dynamiques — recalculés quand Firestore charge de nouveaux produits
+  const allColors = useMemo(
+    () => Array.from(new Map(allProducts.flatMap((p) => p.colors ?? []).map((c) => [c.hex, c])).values()),
+    [allProducts],
+  );
+  const allSizes = useMemo(
+    () => Array.from(new Set(allProducts.flatMap((p) => p.sizes ?? []))),
+    [allProducts],
+  );
+  const maxPriceCeiling = useMemo(
+    () => allProducts.length > 0 ? Math.ceil(Math.max(...allProducts.map((p) => p.priceUSD)) / 100) * 100 : 1000,
+    [allProducts],
+  );
+
   const [categories, setCategories] = useState<Set<Category>>(
     new Set(initialCat ? [initialCat] : []),
   );
   const [colors, setColors] = useState<Set<string>>(new Set());
   const [sizes, setSizes] = useState<Set<string>>(new Set());
-  const [maxPrice, setMaxPrice] = useState(MAX_PRICE);
+  // 0 = pas encore initialisé → utilise maxPriceCeiling
+  const [maxPrice, setMaxPrice] = useState(0);
   const [sort, setSort] = useState<SortKey>('popular');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
+  // Initialise le slider dès que le plafond est connu
+  useEffect(() => {
+    if (maxPrice === 0 && maxPriceCeiling > 0) {
+      setMaxPrice(maxPriceCeiling);
+    }
+  }, [maxPriceCeiling, maxPrice]);
+
+  const effectiveMax = maxPrice > 0 ? maxPrice : maxPriceCeiling;
+
   const filtered = useMemo(() => {
-    let list = PRODUCTS.filter((p) => {
+    let list = allProducts.filter((p) => {
       if (categories.size > 0 && !categories.has(p.category)) return false;
-      if (p.priceUSD > maxPrice) return false;
+      if (p.priceUSD > effectiveMax) return false;
       if (colors.size > 0) {
         const hasColor = p.colors?.some((c) => colors.has(c.hex));
         if (!hasColor) return false;
@@ -74,7 +102,7 @@ export default function CatalogueClient({ initialCategory, initialSubcategory, h
     });
 
     return list;
-  }, [categories, colors, sizes, maxPrice, sort]);
+  }, [allProducts, categories, colors, sizes, effectiveMax, sort, initialSubcategory]);
 
   const toggleSet = <T,>(set: Set<T>, value: T): Set<T> => {
     const next = new Set(set);
@@ -87,11 +115,11 @@ export default function CatalogueClient({ initialCategory, initialSubcategory, h
     setCategories(new Set());
     setColors(new Set());
     setSizes(new Set());
-    setMaxPrice(MAX_PRICE);
+    setMaxPrice(maxPriceCeiling);
   };
 
   const activeFilterCount =
-    categories.size + colors.size + sizes.size + (maxPrice < MAX_PRICE ? 1 : 0);
+    categories.size + colors.size + sizes.size + (effectiveMax < maxPriceCeiling ? 1 : 0);
 
   return (
     <>
@@ -129,7 +157,7 @@ export default function CatalogueClient({ initialCategory, initialSubcategory, h
                         : 'border-line text-ink hover:bg-beige'
                     }`}
                   >
-                    {cat.label} <span className="opacity-50">({cat.count})</span>
+                    {cat.label} <span className="opacity-50">({catCounts[cat.slug as keyof typeof catCounts] ?? 0})</span>
                   </button>
                 );
               })}
@@ -189,21 +217,21 @@ export default function CatalogueClient({ initialCategory, initialSubcategory, h
                 <input
                   type="range"
                   min={20}
-                  max={MAX_PRICE}
+                  max={maxPriceCeiling}
                   step={20}
-                  value={maxPrice}
+                  value={effectiveMax}
                   onChange={(e) => setMaxPrice(Number(e.target.value))}
                   className="w-full accent-terra"
                 />
                 <div className="mt-2 flex items-center justify-between font-display text-xs">
                   <span className="text-muted">$20</span>
-                  <span className="font-bold text-terra">${maxPrice}</span>
+                  <span className="font-bold text-terra">${effectiveMax}</span>
                 </div>
               </FilterGroup>
 
               <FilterGroup title="Couleurs">
                 <div className="flex flex-wrap gap-2">
-                  {ALL_COLORS.map((c) => {
+                  {allColors.map((c) => {
                     const active = colors.has(c.hex);
                     return (
                       <button
@@ -229,7 +257,7 @@ export default function CatalogueClient({ initialCategory, initialSubcategory, h
 
               <FilterGroup title="Tailles">
                 <div className="flex flex-wrap gap-2">
-                  {ALL_SIZES.map((s) => {
+                  {allSizes.map((s) => {
                     const active = sizes.has(s);
                     return (
                       <button

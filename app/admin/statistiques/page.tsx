@@ -6,6 +6,7 @@ import { useAdmin } from '@/components/admin/AdminProvider';
 import { formatUSD } from '@/lib/currency';
 import { getTopProducts } from '@/lib/firebase/db';
 import { PRODUCTS } from '@/lib/products';
+import { getAdminProducts } from '@/lib/admin/product-store';
 
 interface TopProduct {
   productId: string;
@@ -23,9 +24,11 @@ export default function StatistiquesPage() {
 
   useEffect(() => {
     getTopProducts(8).then((data) => {
+      const adminProducts = getAdminProducts();
       const enriched = data.map((d) => {
-        const product = PRODUCTS.find((p) => p.id === d.productId);
-        return { ...d, name: product?.name };
+        const seed = PRODUCTS.find((p) => p.id === d.productId);
+        const admin = adminProducts.find((p) => p.id === d.productId);
+        return { ...d, name: seed?.name ?? admin?.name };
       });
       setTopProducts(enriched);
       setLoadingTop(false);
@@ -42,6 +45,20 @@ export default function StatistiquesPage() {
   const conversionRate = orders.length > 0
     ? Math.round((deliveredOrders / orders.length) * 100)
     : 0;
+
+  // ── Daily revenue chart for current month ────────────────────────────────────
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dailyRevenue = Array<number>(daysInMonth).fill(0);
+  orders.forEach((o) => {
+    if (!STATUS_REVENUE.includes(o.status)) return;
+    const d = new Date(o.lastMessageAt);
+    if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+      dailyRevenue[d.getDate() - 1] += o.totalUSD;
+    }
+  });
+  const maxDailyRevenue = Math.max(...dailyRevenue, 1);
+  const currentMonthLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
   // Revenue by status
   const revenueByStatus = [
@@ -217,26 +234,26 @@ export default function StatistiquesPage() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="font-display font-bold text-sm text-ink">Évolution du chiffre d&apos;affaires</h3>
-              <p className="text-xs text-muted mt-0.5 font-light">Données basées sur les commandes confirmées</p>
+              <p className="text-xs text-muted mt-0.5 font-light">Commandes confirmées / expédiées / livrées</p>
             </div>
-            <span className="font-display text-xs text-muted">Mai 2026</span>
+            <span className="font-display text-xs text-muted capitalize">{currentMonthLabel}</span>
           </div>
 
-          {/* Simple bar chart using CSS */}
-          <div className="flex items-end gap-2 h-32">
-            {[12, 45, 28, 78, 56, 89, 123, 45, 67, 90, 34, 78, 112, 89, 45, 67, 100, 87, 56, 78, 90, 123, 89, 45].map((v, i) => (
+          {/* Real bar chart */}
+          <div className="flex items-end gap-1 h-32">
+            {dailyRevenue.map((v, i) => (
               <div
                 key={i}
-                className="flex-1 bg-terra/20 hover:bg-terra/40 rounded-t transition-colors cursor-pointer"
-                style={{ height: `${(v / 123) * 100}%` }}
-                title={`Jour ${i + 1} : ${formatUSD(v)}`}
+                className={`flex-1 rounded-t transition-colors cursor-pointer ${v > 0 ? 'bg-terra/60 hover:bg-terra' : 'bg-bone hover:bg-terra/20'}`}
+                style={{ height: v > 0 ? `${Math.max((v / maxDailyRevenue) * 100, 8)}%` : '8%' }}
+                title={`${i + 1} ${now.toLocaleDateString('fr-FR', { month: 'short' })} : ${v > 0 ? formatUSD(v) : '—'}`}
               />
             ))}
           </div>
           <div className="flex justify-between text-[10px] text-muted mt-2 font-display">
-            <span>1 mai</span>
-            <span>15 mai</span>
-            <span>24 mai</span>
+            <span>1</span>
+            <span>{Math.ceil(daysInMonth / 2)}</span>
+            <span>{daysInMonth}</span>
           </div>
         </div>
       </div>

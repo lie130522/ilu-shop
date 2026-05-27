@@ -1,72 +1,110 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import {
-  createDraftId,
+  getAdminProducts,
   saveAdminProduct,
-  slugify,
   SUBCATEGORIES,
+  type StoredProduct,
 } from '@/lib/admin/product-store';
 import { saveProductToFirestore } from '@/lib/firebase/products';
 import {
   STEPS,
   type Step,
   type FormState,
+  type DraftImage,
   StepInfos,
   StepVariantes,
   StepMedias,
   StepPipeline,
   StepPublication,
   FormSidebar,
-} from '../_components/product-form';
+} from '../../_components/product-form';
 
-// ── Valeur initiale ───────────────────────────────────────────────────────────
+// ── Conversion StoredProduct → FormState ──────────────────────────────────────
 
-const INITIAL: FormState = {
-  name: '',
-  category: 'mode',
-  subcategory: '',
-  priceUSD: '',
-  oldPriceUSD: '',
-  shortDescription: '',
-  description: '',
-  stock: '',
-  tags: [],
-  sizes: [],
-  colors: [],
-  images: [],
-  videos: [],
-  colorImages: {},
-  brand: '',
-  material: '',
-  ram: [],
-  connectivity: [],
-  genre: undefined,
-  modele: '',
-  platform: '',
-  deliveryMode: undefined,
-  rdcAvailability: undefined,
-  descriptionTone: 'editorial',
-  status: 'active',
-  badge: undefined,
-};
+function productToForm(p: StoredProduct): FormState {
+  return {
+    name: p.name,
+    category: p.category,
+    subcategory: p.subcategory,
+    priceUSD: String(p.priceUSD),
+    oldPriceUSD: p.oldPriceUSD != null ? String(p.oldPriceUSD) : '',
+    shortDescription: p.shortDescription,
+    description: p.description,
+    stock: String(p.stock),
+    tags: p.tags,
+    sizes: p.sizes,
+    colors: p.colors,
+    // StoredImage est compatible avec DraftImage (DraftImage étend StoredImage)
+    images: p.images as DraftImage[],
+    videos: p.videos,
+    colorImages: p.colorImages ?? {},
+    brand: p.brand ?? '',
+    material: p.material ?? '',
+    ram: p.ram ?? [],
+    connectivity: p.connectivity ?? [],
+    genre: p.genre,
+    modele: p.modele ?? '',
+    platform: p.platform ?? '',
+    deliveryMode: p.deliveryMode,
+    rdcAvailability: p.rdcAvailability,
+    descriptionTone: p.descriptionTone ?? 'editorial',
+    status: p.status,
+    badge: p.badge,
+  };
+}
 
 // ── Page principale ───────────────────────────────────────────────────────────
 
-export default function NouveauProduitPage() {
-  const { currentAdmin, exchangeRate } = useAdmin();
+export default function ModifierProduitPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { currentAdmin, exchangeRate } = useAdmin();
+
+  const [existingProduct, setExistingProduct] = useState<StoredProduct | null>(null);
+  const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<Step>('infos');
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const [form, setForm] = useState<FormState | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [saving, setSaving] = useState(false);
-  const [publishError, setPublishError] = useState('');
+  const [saveError, setSaveError] = useState('');
+
+  // Chargement du produit depuis localStorage
+  useEffect(() => {
+    const found = getAdminProducts().find((p) => p.id === id) ?? null;
+    setExistingProduct(found);
+    if (found) {
+      setForm(productToForm(found));
+      // Si le produit a des tags, les mettre en place
+    }
+    setLoading(false);
+  }, [id]);
 
   if (!currentAdmin) return null;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-muted font-display text-sm tracking-widest uppercase">
+        Chargement…
+      </div>
+    );
+  }
+
+  if (!existingProduct || !form) {
+    return (
+      <div className="p-8">
+        <p className="text-muted mb-4">Produit introuvable (id : {id}).</p>
+        <Link href="/admin/produits" className="text-terra hover:underline text-sm">
+          ← Retour au catalogue
+        </Link>
+      </div>
+    );
+  }
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
 
@@ -80,16 +118,19 @@ export default function NouveauProduitPage() {
   };
 
   const set = <K extends keyof FormState>(key: K, val: FormState[K]) =>
-    setForm((f) => ({ ...f, [key]: val }));
+    setForm((f) => (f ? { ...f, [key]: val } : f));
 
-  const handlePublish = async () => {
+  // ── Enregistrement ─────────────────────────────────────────────────────────
+
+  const handleSave = async () => {
+    if (!form) return;
     setSaving(true);
-    setPublishError('');
-    const id = createDraftId();
+    setSaveError('');
+
     const now = new Date().toISOString();
-    const product = {
-      id,
-      slug: slugify(form.name) + '-' + id.split('-')[1],
+    const updatedProduct: StoredProduct = {
+      id: existingProduct.id,       // Conserver l'ID d'origine
+      slug: existingProduct.slug,   // Conserver le slug pour ne pas casser les URLs
       name: form.name,
       category: form.category,
       subcategory: form.subcategory || SUBCATEGORIES[form.category][0],
@@ -131,33 +172,32 @@ export default function NouveauProduitPage() {
       deliveryMode: form.deliveryMode,
       rdcAvailability: form.rdcAvailability,
       descriptionTone: form.descriptionTone || undefined,
-      rating: 0,
-      reviewCount: 0,
-      createdAt: now,
+      rating: existingProduct.rating,
+      reviewCount: existingProduct.reviewCount,
+      createdAt: existingProduct.createdAt,
       updatedAt: now,
     };
 
-    // 1. Sauvegarde locale immédiate
-    saveAdminProduct(product);
+    // 1. Mise à jour localStorage
+    saveAdminProduct(updatedProduct);
 
-    // 2. Upload images + Firestore
+    // 2. Upload images (nouvelles + re-upload des existantes) + mise à jour Firestore
     try {
-      await saveProductToFirestore(product);
+      await saveProductToFirestore(updatedProduct);
       setSaving(false);
-      router.push('/admin/produits');
+      router.push(`/admin/produits/${existingProduct.id}`);
     } catch (err: unknown) {
       const message = (err as { message?: string })?.message ?? '';
-      console.error('[handlePublish] Firestore save failed:', err);
+      console.error('[handleSave] Firestore save failed:', err);
+
       if (message.startsWith('STORAGE_UPLOAD_FAILED')) {
         const detail = message.split(':').slice(1).join(':');
-        setPublishError(
-          `⚠ Upload des images échoué.\n\n` +
-          `Cause : ${detail}\n\n` +
-          `Solution : va dans Firebase Console → Storage → Rules et assure-toi que les règles sont déployées. ` +
-          `Copie le contenu du fichier storage.rules de ton projet et colle-le dans Firebase Console.`
+        setSaveError(
+          `⚠ Upload des images échoué.\n\nCause : ${detail}\n\n` +
+          `Solution : déploie les règles Firebase Storage dans Firebase Console → Storage → Rules.`
         );
       } else {
-        setPublishError(`Erreur lors de la publication : ${message || 'inconnue'}`);
+        setSaveError(`Erreur lors de l'enregistrement : ${message || 'inconnue'}`);
       }
       setSaving(false);
     }
@@ -166,11 +206,19 @@ export default function NouveauProduitPage() {
   return (
     <>
       <AdminTopBar
-        title="Nouveau produit"
-        subtitle="Formulaire de création — 5 étapes"
+        title={`Modifier — ${existingProduct.name}`}
+        subtitle="Modifier les informations du produit"
       />
 
       <div className="p-8 max-w-6xl">
+        {/* Lien retour */}
+        <Link
+          href={`/admin/produits/${existingProduct.id}`}
+          className="inline-flex items-center gap-2 font-display text-[11px] tracking-widest uppercase font-semibold text-muted hover:text-ink transition-colors mb-8"
+        >
+          ← Retour aux détails
+        </Link>
+
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8 items-start">
 
           {/* ── Colonne principale ─────────────────────────────────────── */}
@@ -218,16 +266,24 @@ export default function NouveauProduitPage() {
                 <StepInfos form={form} set={set} tagInput={tagInput} setTagInput={setTagInput} exchangeRate={exchangeRate} />
               )}
               {step === 'variantes' && <StepVariantes form={form} set={set} />}
-              {step === 'medias' && <StepMedias form={form} set={set} onGeminiApplied={() => setStep('infos')} />}
+              {step === 'medias' && (
+                <StepMedias form={form} set={set} onGeminiApplied={() => setStep('infos')} />
+              )}
               {step === 'pipeline' && <StepPipeline form={form} set={set} />}
               {step === 'publication' && (
                 <>
-                  {publishError && (
+                  {saveError && (
                     <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-xs text-red-700 leading-relaxed whitespace-pre-line">
-                      {publishError}
+                      {saveError}
                     </div>
                   )}
-                  <StepPublication form={form} set={set} onPublish={handlePublish} saving={saving} />
+                  <StepPublication
+                    form={form}
+                    set={set}
+                    onPublish={handleSave}
+                    saving={saving}
+                    publishLabel="✓ Enregistrer les modifications"
+                  />
                 </>
               )}
             </div>
@@ -245,7 +301,7 @@ export default function NouveauProduitPage() {
                   </button>
                 ) : (
                   <Link
-                    href="/admin/produits"
+                    href={`/admin/produits/${existingProduct.id}`}
                     className="font-display text-[11px] tracking-widest uppercase font-semibold text-muted hover:text-ink transition-colors"
                   >
                     ← Annuler

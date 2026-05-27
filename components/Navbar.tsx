@@ -5,14 +5,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useShop } from './ShopProvider';
 import { CurrencyToggle } from './CurrencyToggle';
 import { useAuth } from './AuthProvider';
-import { PRODUCTS } from '@/lib/products';
+import { useAllProducts } from '@/lib/hooks/useAllProducts';
 
 const NAV_LINKS = [
   { href: '/', label: 'Accueil' },
   { href: '/catalogue', label: 'Catalogue' },
   { href: '/catalogue?cat=mode', label: 'Mode' },
-  { href: '/catalogue?cat=telephones', label: 'High-Tech' },
-  { href: '/#featured', label: 'À la une' },
+  { href: '/catalogue?cat=technologie', label: 'Technologie' },
+  { href: '/catalogue?cat=services', label: 'Services' },
+  { href: '/promo', label: '% Promo', highlight: true },
 ];
 
 export function Navbar() {
@@ -22,6 +23,9 @@ export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Produits fusionnés seed + Firestore pour la recherche
+  const allProducts = useAllProducts();
 
   // P27 — Focus input quand le modal s'ouvre
   useEffect(() => {
@@ -41,9 +45,9 @@ export function Navbar() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // P27 — Résultats de recherche (filtre en temps réel)
+  // P27 — Résultats de recherche (filtre en temps réel, inclut produits Firestore)
   const searchResults = searchQuery.length >= 2
-    ? PRODUCTS.filter((p) =>
+    ? allProducts.filter((p) =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.shortDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -66,17 +70,27 @@ export function Navbar() {
             </Link>
 
             {/* Desktop nav */}
-            <nav className="hidden lg:flex items-center gap-10">
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="font-display text-[13px] font-medium tracking-wider uppercase text-ink/80 hover:text-terra transition-colors duration-200 relative group"
-                >
-                  {link.label}
-                  <span className="absolute -bottom-1 left-0 w-0 h-px bg-terra group-hover:w-full transition-all duration-300" />
-                </Link>
-              ))}
+            <nav className="hidden lg:flex items-center gap-8">
+              {NAV_LINKS.map((link) =>
+                (link as { highlight?: boolean }).highlight ? (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="font-display text-[11px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full bg-gold/20 text-[#7A5A15] border border-gold/50 hover:bg-gold/40 transition-colors duration-200"
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="font-display text-[13px] font-medium tracking-wider uppercase text-ink/80 hover:text-terra transition-colors duration-200 relative group"
+                  >
+                    {link.label}
+                    <span className="absolute -bottom-1 left-0 w-0 h-px bg-terra group-hover:w-full transition-all duration-300" />
+                  </Link>
+                )
+              )}
             </nav>
 
             {/* Actions */}
@@ -176,16 +190,29 @@ export function Navbar() {
         {mobileOpen && (
           <div className="lg:hidden border-t border-line bg-cream">
             <nav className="px-6 py-6 flex flex-col gap-1">
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="font-display text-base font-medium py-3 border-b border-line/60 text-ink hover:text-terra transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {NAV_LINKS.map((link) =>
+                (link as { highlight?: boolean }).highlight ? (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="font-display text-base font-bold py-3 border-b border-line/60 text-[#7A5A15] hover:text-gold transition-colors flex items-center gap-2"
+                  >
+                    <span className="px-2 py-0.5 rounded bg-gold/20 text-xs tracking-widest uppercase">
+                      {link.label}
+                    </span>
+                  </Link>
+                ) : (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="font-display text-base font-medium py-3 border-b border-line/60 text-ink hover:text-terra transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                )
+              )}
             </nav>
           </div>
         )}

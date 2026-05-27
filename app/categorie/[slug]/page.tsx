@@ -6,18 +6,25 @@ import type { Category } from '@/lib/types';
 
 // Mapping slug → infos d'affichage
 const CATEGORY_META: Record<string, { label: string; description: string; category: Category; subcategory?: string }> = {
-  // Mode principale
-  'mode': { label: 'Mode', description: 'Toute notre sélection mode — vêtements, chaussures, accessoires.', category: 'mode' },
-  'mode-femme': { label: 'Mode Femme', description: 'Robes, hauts, pantalons et accessoires pour femme.', category: 'mode', subcategory: 'femme' },
-  'mode-homme': { label: 'Mode Homme', description: 'Chemises, vestes, pantalons et chaussures pour homme.', category: 'mode', subcategory: 'homme' },
-  'mode-enfant': { label: 'Mode Enfant', description: 'Vêtements et chaussures pour enfants.', category: 'mode', subcategory: 'enfant' },
-  'vestes-manteaux': { label: 'Vestes & Manteaux', description: 'Notre collection de vestes, blazers et manteaux.', category: 'mode', subcategory: 'Vestes & Manteaux' },
-  'chaussures': { label: 'Chaussures', description: 'Sneakers, boots, sandales et plus encore.', category: 'mode', subcategory: 'Chaussures' },
-  'accessoires': { label: 'Accessoires', description: 'Sacs, bijoux, ceintures et accessoires de mode.', category: 'mode', subcategory: 'Accessoires' },
-  // High-tech
-  'telephones': { label: 'Téléphones', description: 'Smartphones haut de gamme et accessoires.', category: 'telephones' },
-  'ordinateurs': { label: 'Ordinateurs', description: 'Laptops, ultrabooks et accessoires informatiques.', category: 'ordinateurs' },
-  'tablettes': { label: 'Tablettes', description: 'Tablettes et accessoires pour la productivité et le divertissement.', category: 'tablettes' },
+  // Mode
+  'mode':        { label: 'Mode',              description: 'Vêtements, chaussures, bijoux, maroquinerie et parfums.',        category: 'mode' },
+  'vetements':   { label: 'Vêtements',         description: 'T-shirts, pantalons, robes, vestes, pulls et plus encore.',      category: 'mode', subcategory: 'Vêtements' },
+  'chaussures':  { label: 'Chaussures',        description: 'Sneakers, boots, sandales — adultes et enfants.',               category: 'mode', subcategory: 'Chaussures' },
+  'bijoux':      { label: 'Bijoux',            description: 'Boucles d\'oreille, bracelets, colliers et bagues.',            category: 'mode', subcategory: 'Bijoux & accessoires classiques' },
+  'maroquinerie':{ label: 'Maroquinerie',      description: 'Sacs à main, portefeuilles, ceintures et pochettes.',           category: 'mode', subcategory: 'Maroquinerie' },
+  'parfums':     { label: 'Parfums & Beauté',  description: 'Eaux de parfum, eaux de toilette, extraits et brumes.',         category: 'mode', subcategory: 'Parfums & beauté' },
+  // Technologie
+  'technologie': { label: 'Technologie',       description: 'Smartphones, ordinateurs et accessoires tech.',                 category: 'technologie' },
+  'telephonie':  { label: 'Téléphonie',        description: 'Smartphones, tablettes et téléphones basiques.',               category: 'technologie', subcategory: 'Téléphonie' },
+  'informatique':{ label: 'Informatique',      description: 'Laptops, ultrabooks, PC de bureau et tablettes graphiques.',    category: 'technologie', subcategory: 'Informatique' },
+  'accessoires-tech': { label: 'Accessoires tech', description: 'Chargeurs, câbles, coques, clés USB, claviers et écrans.', category: 'technologie', subcategory: 'Accessoires tech' },
+  // Hybrides / Wearables
+  'hybrides':    { label: 'Wearables',         description: 'Montres connectées, bracelets fitness et accessoires connectés.', category: 'hybrides' },
+  'wearables':   { label: 'Wearables',         description: 'Smartwatches, bracelets de fitness, lunettes et casques audio.', category: 'hybrides', subcategory: 'Wearables / accessoires connectés' },
+  // Services digitaux
+  'services':    { label: 'Services digitaux', description: 'Abonnements Netflix, Spotify, Adobe et forfaits data Kinshasa.', category: 'services' },
+  'abonnements': { label: 'Abonnements',       description: 'Netflix, Spotify, YouTube Premium, Microsoft 365, PlayStation.', category: 'services', subcategory: 'Abonnements plateformes' },
+  'forfaits-data':{ label: 'Forfaits data',    description: 'Vodacom, Airtel, Africell, Orange — 1 Go à 20 Go.',             category: 'services', subcategory: 'Forfaits data' },
 };
 
 interface Props {

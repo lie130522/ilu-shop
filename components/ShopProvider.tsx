@@ -8,6 +8,15 @@ import { auth } from '@/lib/firebase/client';
 import { onAuthStateChanged } from 'firebase/auth';
 import { USD_TO_CDF_RATE } from '@/lib/currency';
 
+export interface OrderContext {
+  productName: string;
+  productSlug: string;
+  priceUSD: number;
+  size?: string;
+  color?: string;
+  qty: number;
+}
+
 interface ShopContextValue {
   currency: Currency;
   setCurrency: (c: Currency) => void;
@@ -21,7 +30,9 @@ interface ShopContextValue {
   toggleWishlist: (productId: string) => void;
   chatOpen: boolean;
   openChat: () => void;
+  openChatWithProduct: (ctx: OrderContext) => void;
   closeChat: () => void;
+  chatOrderContext: OrderContext | null;
   // P11 — taux de change depuis Firestore (fallback: USD_TO_CDF_RATE)
   exchangeRate: number;
   rateUpdatedAt: string;
@@ -36,6 +47,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatOrderContext, setChatOrderContext] = useState<OrderContext | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [exchangeRate, setExchangeRate] = useState<number>(USD_TO_CDF_RATE);
   const [rateUpdatedAt, setRateUpdatedAt] = useState<string>('');
@@ -177,8 +189,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     wishlist,
     toggleWishlist,
     chatOpen,
-    openChat: () => setChatOpen(true),
-    closeChat: () => setChatOpen(false),
+    openChat: () => { setChatOrderContext(null); setChatOpen(true); },
+    openChatWithProduct: (ctx: OrderContext) => { setChatOrderContext(ctx); setChatOpen(true); },
+    closeChat: () => { setChatOpen(false); setChatOrderContext(null); },
+    chatOrderContext,
     exchangeRate,
     rateUpdatedAt,
   };

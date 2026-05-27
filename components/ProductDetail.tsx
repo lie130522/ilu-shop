@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useShop } from './ShopProvider';
 import { useAuth } from './AuthProvider';
 import { PriceDisplay } from './PriceDisplay';
-import { USD_TO_CDF_RATE } from '@/lib/currency';
 import { trackView, trackCartAdd, trackWishlist, addRecentlyViewed } from '@/lib/tracking';
 import type { Product } from '@/lib/types';
 
@@ -83,7 +82,7 @@ function SizeGuideModal({ category, onClose }: { category: string; onClose: () =
 }
 
 export function ProductDetail({ product }: { product: Product }) {
-  const { addToCart, openChat, wishlist, toggleWishlist, rateUpdatedAt } = useShop();
+  const { addToCart, openChatWithProduct, wishlist, toggleWishlist, rateUpdatedAt, exchangeRate } = useShop();
   const { user } = useAuth();
   const [activeImage, setActiveImage] = useState(0);
   const [size, setSize] = useState<string | undefined>(product.sizes?.[0]);
@@ -111,7 +110,14 @@ export function ProductDetail({ product }: { product: Product }) {
   const handleOrder = () => {
     addToCart({ productId: product.id, size, color, quantity: qty });
     trackCartAdd(user?.uid ?? null, product.id, product.category);
-    setTimeout(() => openChat(), 100);
+    openChatWithProduct({
+      productName: product.name,
+      productSlug: product.slug,
+      priceUSD: product.priceUSD,
+      size,
+      color,
+      qty,
+    });
   };
 
   const handleWishlist = () => {
@@ -252,7 +258,7 @@ export function ProductDetail({ product }: { product: Product }) {
             <div className="mt-8 pb-8 border-b border-line">
               <PriceDisplay usd={product.priceUSD} oldUsd={product.oldPriceUSD} size="xl" />
               <p className="mt-3 text-[11px] text-muted font-light">
-                Taux indicatif : 1 USD ≈ {USD_TO_CDF_RATE.toLocaleString('fr-FR')} FC
+                Taux indicatif : 1 USD ≈ {exchangeRate.toLocaleString('fr-FR')} FC
                 {rateUpdatedAt && (
                   <span className="ml-1">
                     · Mis à jour le{' '}
@@ -418,8 +424,53 @@ export function ProductDetail({ product }: { product: Product }) {
                       <strong>Catégorie :</strong> {product.subcategory}
                     </li>
                     <li>
-                      <strong>Stock :</strong> {product.stock} pièces disponibles
+                      <strong>Stock :</strong>{' '}
+                      {product.stock >= 9999 ? 'Disponible' : `${product.stock} pièces disponibles`}
                     </li>
+                    {product.genre && (
+                      <li>
+                        <strong>Genre :</strong>{' '}
+                        {{ femme: 'Femme', homme: 'Homme', mixte: 'Mixte', enfant: 'Enfant' }[product.genre]}
+                      </li>
+                    )}
+                    {product.brand && (
+                      <li><strong>Marque :</strong> {product.brand}</li>
+                    )}
+                    {product.material && (
+                      <li><strong>Matière :</strong> {product.material}</li>
+                    )}
+                    {product.modele && (
+                      <li><strong>Modèle :</strong> {product.modele}</li>
+                    )}
+                    {product.ram && product.ram.length > 0 && (
+                      <li><strong>RAM :</strong> {product.ram.join(' / ')}</li>
+                    )}
+                    {product.connectivity && product.connectivity.length > 0 && (
+                      <li><strong>Connectivité :</strong> {product.connectivity.join(', ')}</li>
+                    )}
+                    {product.platform && (
+                      <li><strong>Plateforme :</strong> {product.platform}</li>
+                    )}
+                    {product.deliveryMode && (
+                      <li>
+                        <strong>Mode de livraison :</strong>{' '}
+                        {{
+                          activation_code: 'Code d\'activation',
+                          configured_account: 'Compte configuré',
+                          direct_recharge: 'Rechargement direct',
+                        }[product.deliveryMode]}
+                      </li>
+                    )}
+                    {product.rdcAvailability && (
+                      <li>
+                        <strong>Disponibilité RDC :</strong>{' '}
+                        {{
+                          confirmed: '✓ Confirmée',
+                          to_verify: '⚠ À vérifier',
+                          limited: '⚡ Limitée',
+                        }[product.rdcAvailability]}
+                      </li>
+                    )}
                     {product.tags.length > 0 && (
                       <li>
                         <strong>Tags :</strong> {product.tags.join(', ')}

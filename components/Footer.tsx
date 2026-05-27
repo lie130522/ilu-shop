@@ -43,11 +43,11 @@ export function Footer() {
           <FooterColumn
             title="Catalogue"
             links={[
-              { href: '/catalogue?cat=mode', label: 'Mode' },
-              { href: '/catalogue?cat=telephones', label: 'Téléphones' },
-              { href: '/catalogue?cat=ordinateurs', label: 'Ordinateurs' },
-              { href: '/catalogue?cat=tablettes', label: 'Tablettes' },
-              { href: '/#featured', label: 'À la une' },
+              { href: '/catalogue?cat=mode',        label: 'Mode' },
+              { href: '/catalogue?cat=technologie',  label: 'Technologie' },
+              { href: '/catalogue?cat=hybrides',     label: 'Wearables' },
+              { href: '/catalogue?cat=services',     label: 'Services digitaux' },
+              { href: '/#featured',                  label: 'À la une' },
             ]}
           />
 

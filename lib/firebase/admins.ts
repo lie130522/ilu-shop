@@ -19,8 +19,14 @@ import type { Admin, AdminPermission, AdminRole } from '@/lib/admin/types';
 
 export async function getAdminByUid(uid: string): Promise<Admin | null> {
   try {
-    const snap = await getDoc(doc(db, 'admins', uid));
-    if (snap.exists()) return { id: uid, ...snap.data() } as Admin;
+    // Timeout 8s — évite que getDoc reste bloqué indéfiniment si Firestore est lent
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
+    const result = await Promise.race([
+      getDoc(doc(db, 'admins', uid)),
+      timeout,
+    ]);
+    if (!result || !('exists' in result)) return null; // timeout atteint
+    if (result.exists()) return { id: uid, ...result.data() } as Admin;
     return null;
   } catch {
     return null;
@@ -67,13 +73,14 @@ export async function createAdminDoc(
     invitedBy?: string;
   },
 ): Promise<Admin> {
+  // Firestore rejette les valeurs `undefined` → on construit l'objet sans les champs optionnels manquants
   const admin: Omit<Admin, 'id'> = {
     email: data.email,
     fullName: data.fullName,
     role: data.role,
     permissions: data.permissions,
-    invitedBy: data.invitedBy,
     createdAt: new Date().toISOString(),
+    ...(data.invitedBy !== undefined && { invitedBy: data.invitedBy }),
   };
   await setDoc(doc(db, 'admins', uid), {
     ...admin,
@@ -88,14 +95,14 @@ export async function createAdminDoc(
 // principal configuré, le document est créé automatiquement.
 
 const PRINCIPAL_EMAIL =
-  process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? 'lievinkamba1@gmail.com';
+  process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? 'lievinkabamba1@gmail.com';
 
 export async function bootstrapAdminIfNeeded(
   uid: string,
   email: string,
   displayName: string,
 ): Promise<Admin | null> {
-  // Vérifier si un document existe déjà
+  // Vérifier si un document admin existe déjà pour ce UID
   const existing = await getAdminByUid(uid);
   if (existing) {
     // Mettre à jour lastLogin (non bloquant — échec silencieux)
@@ -107,15 +114,23 @@ export async function bootstrapAdminIfNeeded(
     return { ...existing, lastLogin: new Date().toISOString() };
   }
 
-  // Seulement créer si c'est l'email de l'admin principal
+  // Pas encore dans Firestore → vérifier si c'est l'admin principal attendu
   if (email.toLowerCase() !== PRINCIPAL_EMAIL.toLowerCase()) return null;
 
-  return createAdminDoc(uid, {
-    email,
-    fullName: displayName || 'Lievin Kabamba',
-    role: 'admin_principal',
-    permissions: ['catalog', 'orders', 'editorial', 'clients', 'exchange_rate', 'notifications'],
-  });
+  // Créer le document admin principal (première connexion)
+  try {
+    return await createAdminDoc(uid, {
+      email,
+      fullName: displayName || 'Lievin Kabamba',
+      role: 'admin_principal',
+      permissions: ['catalog', 'orders', 'editorial', 'clients', 'exchange_rate', 'notifications'],
+    });
+  } catch (err: unknown) {
+    // Firestore permission-denied → les règles ne sont probablement pas déployées.
+    // On lance une erreur lisible pour que la page login puisse l'afficher.
+    const code = (err as { code?: string })?.code ?? 'unknown';
+    throw new Error(`FIRESTORE_CREATE_FAILED:${code}`);
+  }
 }
 
 // ── Acceptation d'une invitation ───────────────────────────────────────────────

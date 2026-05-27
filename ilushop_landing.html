@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ILU SHOP — Mode & High-Tech, Kinshasa</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F2EDE4;
+    --cream2: #EDE7DC;
+    --dark: #1A1410;
+    --dark2: #231E19;
+    --terra: #C4512A;
+    --terra2: #A33F1F;
+    --text: #1A1410;
+    --muted: #7A6E65;
+    --border: rgba(26,20,16,0.1);
+    --gold: #C4A86A;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 40px; height: 64px;
+    background: rgba(242,237,228,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+    display: flex; align-items: center; gap: 2px;
+  }
+  .nav-logo .ilu { color: var(--terra); font-style: italic; }
+  .nav-logo .shop { color: var(--text); }
+  .nav-links { display: flex; gap: 32px; align-items: center; }
+  .nav-links a {
+    font-size: 13px; font-weight: 400; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--text);
+    text-decoration: none; transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--terra); }
+  .nav-right { display: flex; align-items: center; gap: 10px; }
+  .devise-toggle {
+    display: flex; border: 1px solid var(--border); border-radius: 20px;
+    overflow: hidden; font-size: 13px; font-weight: 500;
+  }
+  .devise-toggle span {
+    padding: 5px 12px; cursor: pointer; transition: background 0.2s;
+  }
+  .devise-toggle span.active {
+    background: var(--text); color: var(--cream);
+  }
+  .nav-icon-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--border); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.2s;
+    color: var(--text);
+  }
+  .nav-icon-btn:hover { background: var(--cream2); }
+  .nav-icon-btn.user { background: var(--terra); color: #fff; border-color: var(--terra); font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; }
+  .cart-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--text); color: var(--cream);
+    border: none; border-radius: 20px; padding: 8px 16px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .cart-btn:hover { opacity: 0.85; }
+
+  /* ── TICKER ── */
+  .ticker-wrap {
+    background: var(--terra); overflow: hidden;
+    height: 40px; display: flex; align-items: center;
+  }
+  .ticker {
+    display: flex; gap: 0;
+    animation: ticker 22s linear infinite;
+    white-space: nowrap;
+  }
+  .ticker-item {
+    display: flex; align-items: center; gap: 20px;
+    padding: 0 24px;
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--cream);
+  }
+  .ticker-item .dot { color: rgba(242,237,228,0.5); font-size: 10px; }
+  @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+  /* ── HERO ── */
+  .hero {
+    display: grid; grid-template-columns: 1fr 1fr;
+    min-height: 78vh; overflow: hidden;
+    position: relative;
+  }
+  .hero-left {
+    padding: 60px 40px 60px 56px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    position: relative; z-index: 2;
+  }
+  .hero-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--terra); margin-bottom: 20px;
+  }
+  .hero-label::before {
+    content: ''; width: 8px; height: 8px; border-radius: 50%;
+    border: 1.5px solid var(--terra);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .hero h1 {
+    font-family: 'Syne', sans-serif; font-size: clamp(52px, 6vw, 80px);
+    font-weight: 800; line-height: 0.92; letter-spacing: -2px;
+    text-transform: uppercase; margin-bottom: 28px;
+  }
+  .hero h1 .accent { color: var(--terra); }
+  .hero-sub {
+    font-size: 15px; color: var(--muted); line-height: 1.6;
+    max-width: 380px; margin-bottom: 36px;
+  }
+  .hero-cta {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--text); color: var(--cream);
+    padding: 14px 28px; border-radius: 28px;
+    font-size: 13px; font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; cursor: pointer; border: none;
+    transition: opacity 0.2s; align-self: flex-start;
+  }
+  .hero-cta:hover { opacity: 0.8; }
+  .hero-right {
+    position: relative; overflow: hidden;
+    background: #E8DFD4;
+  }
+  .hero-right::before {
+    content: ''; position: absolute;
+    width: 420px; height: 420px; border-radius: 50%;
+    background: var(--cream2); bottom: -80px; right: -80px;
+    z-index: 0;
+  }
+  .hero-img-placeholder {
+    position: absolute; inset: 0; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 120px; opacity: 0.25;
+  }
+  .hero-float-card {
+    position: absolute; bottom: 100px; left: -20px; z-index: 3;
+    background: white; border-radius: 12px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .float-img { width: 42px; height: 42px; border-radius: 8px; background: var(--cream2); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .float-label { font-size: 10px; color: var(--terra); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 2px; }
+  .float-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .hero-nav-dots {
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 20px; z-index: 4;
+    font-size: 10px; letter-spacing: 0.08em; color: var(--muted);
+  }
+  .hero-nav-dots .hdot { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .hdot .line { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex; align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    background: var(--cream);
+  }
+  .stat {
+    flex: 1; padding: 24px 40px;
+    border-right: 1px solid var(--border);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-num {
+    font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800;
+    letter-spacing: -1px; line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); margin-top: 4px;
+  }
+
+  /* ── SECTIONS ── */
+  .section { padding: 60px 56px; }
+  .section-eyebrow {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--terra);
+    margin-bottom: 14px;
+  }
+  .section-eyebrow::before { content: '—'; }
+  .section-heading {
+    font-family: 'Syne', sans-serif; font-size: clamp(28px, 3.5vw, 44px);
+    font-weight: 800; letter-spacing: -1px; line-height: 1;
+    margin-bottom: 36px;
+  }
+  .section-heading-row {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 32px;
+  }
+  .tout-voir {
+    font-size: 12px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text);
+    text-decoration: none; display: flex; align-items: center; gap: 4px;
+    padding-bottom: 2px; border-bottom: 1px solid var(--text);
+    cursor: pointer;
+  }
+  .tout-voir:hover { color: var(--terra); border-color: var(--terra); }
+
+  /* ── CATÉGORIES TENDANCE ── */
+  .cats-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  }
+  .cat-card {
+    border-radius: 16px; padding: 22px;
+    min-height: 220px; display: flex; flex-direction: column;
+    justify-content: space-between; overflow: hidden;
+    position: relative; cursor: pointer;
+    transition: transform 0.25s;
+  }
+  .cat-card:hover { transform: translateY(-3px); }
+  .cat-card .count {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .cat-card .cat-name {
+    font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800;
+    line-height: 1; letter-spacing: -0.5px;
+  }
+  .cat-card .cat-sub { font-size: 12px; margin-top: 4px; opacity: 0.75; }
+  .cat-card .cat-bottom {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-top: 16px;
+  }
+  .cat-card .cat-img { font-size: 42px; }
+  .explorer-btn {
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 500; display: flex; align-items: center; gap: 4px;
+  }
+  .cat-mode { background: var(--terra); color: var(--cream); }
+  .cat-mode .count { color: rgba(242,237,228,0.65); }
+  .cat-mode .explorer-btn { color: var(--cream); }
+  .cat-phones { background: var(--dark); color: var(--cream); }
+  .cat-phones .count { color: rgba(242,237,228,0.5); }
+  .cat-phones .explorer-btn { color: var(--cream); }
+  .cat-ordi { background: var(--cream2); color: var(--text); border: 1px solid var(--border); }
+  .cat-ordi .explorer-btn { color: var(--text); }
+  .cat-digital { background: #C4A86A; color: var(--dark); }
+  .cat-digital .count { color: rgba(26,20,16,0.6); }
+  .cat-digital .explorer-btn { color: var(--dark); }
+
+  /* ── PRODUITS CARDS ── */
+  .prods-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  }
+  .prod-card {
+    cursor: pointer; transition: transform 0.25s;
+  }
+  .prod-card:hover { transform: translateY(-2px); }
+  .prod-photo {
+    border-radius: 12px; overflow: hidden;
+    position: relative; margin-bottom: 14px;
+    background: var(--cream2);
+    aspect-ratio: 3/4;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .prod-photo-inner {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 64px; opacity: 0.35;
+  }
+  .prod-photo:hover .prod-hover {
+    opacity: 1;
+  }
+  .prod-hover {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--text); color: var(--cream);
+    padding: 10px; text-align: center;
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .prod-badge-tag {
+    position: absolute; top: 12px; left: 12px; z-index: 2;
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .badge-une { background: var(--terra); color: #fff; }
+  .badge-new { background: var(--dark); color: #fff; }
+  .badge-trend { background: var(--dark); color: #fff; }
+  .badge-promo { background: var(--gold); color: var(--dark); }
+  .heart-btn {
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: white; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    font-size: 14px;
+  }
+  .prod-name { font-weight: 500; font-size: 15px; margin-bottom: 3px; }
+  .prod-desc { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .prod-price-row { display: flex; align-items: center; gap: 10px; }
+  .prod-price { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--terra); }
+  .prod-price-fc { font-size: 12px; color: var(--muted); }
+  .prod-price-old { font-size: 13px; color: var(--muted); text-decoration: line-through; }
+  .prod-colors { display: flex; gap: 6px; margin-top: 8px; }
+  .color-dot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.1); }
+  .prod-rating { font-size: 12px; color: var(--terra); font-weight: 500; }
+
+  /* ── MANIFESTO ── */
+  .manifesto {
+    background: var(--dark2);
+    padding: 72px 56px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 64px;
+    align-items: center;
+  }
+  .manifesto-left {}
+  .manifesto-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--terra); margin-bottom: 20px;
+  }
+  .manifesto-label::before { content: '○'; }
+  .manifesto h2 {
+    font-family: 'Syne', sans-serif; font-size: clamp(40px, 4vw, 58px);
+    font-weight: 800; line-height: 0.95; letter-spacing: -1.5px;
+    color: white; margin-bottom: 24px;
+  }
+  .manifesto h2 .accent { color: var(--terra); }
+  .manifesto-text { font-size: 15px; color: rgba(255,255,255,0.55); line-height: 1.7; max-width: 420px; }
+  .manifesto-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 28px; font-size: 12px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: white; text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 2px;
+    cursor: pointer;
+  }
+  .manifesto-right {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .mani-card {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 20px;
+  }
+  .mani-icon { font-size: 22px; margin-bottom: 12px; opacity: 0.6; }
+  .mani-card h4 { font-weight: 600; font-size: 14px; color: white; margin-bottom: 8px; }
+  .mani-card p { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.6; }
+
+  /* ── PIÈCE DE LA SEMAINE ── */
+  .piece-semaine {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    min-height: 60vh; align-items: stretch;
+  }
+  .piece-photo {
+    background: #E8DFD4; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .piece-photo::before {
+    content: ''; position: absolute;
+    width: 340px; height: 340px; border-radius: 50%;
+    background: var(--cream2); z-index: 0;
+  }
+  .piece-photo-inner { font-size: 130px; position: relative; z-index: 1; opacity: 0.4; }
+  .piece-right {
+    background: var(--cream); padding: 60px 56px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .piece-right .eyebrow {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--terra); margin-bottom: 20px;
+  }
+  .piece-right .eyebrow::before { content: '★'; font-size: 10px; }
+  .piece-right h2 {
+    font-family: 'Syne', sans-serif; font-size: clamp(42px, 5vw, 64px);
+    font-weight: 800; text-transform: uppercase; line-height: 0.9;
+    letter-spacing: -2px; margin-bottom: 20px;
+  }
+  .piece-right h2 .accent { color: var(--terra); display: block; }
+  .piece-right p { font-size: 15px; color: var(--muted); line-height: 1.65; max-width: 400px; margin-bottom: 28px; }
+  .piece-price { margin-bottom: 28px; }
+  .piece-price .price { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: var(--terra); }
+  .piece-price .price-fc { font-size: 14px; color: var(--muted); margin-top: 3px; }
+  .discover-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--text); color: var(--cream);
+    padding: 14px 28px; border-radius: 28px;
+    font-size: 13px; font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; cursor: pointer; border: none;
+    transition: opacity 0.2s; align-self: flex-start;
+  }
+  .discover-btn:hover { opacity: 0.8; }
+
+  /* ── DIGITAL ── */
+  .digital-section { background: var(--cream2); padding: 60px 56px; }
+  .digital-grid {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center;
+  }
+  .digital-left h2 {
+    font-family: 'Syne', sans-serif; font-size: clamp(32px, 3.5vw, 46px);
+    font-weight: 800; letter-spacing: -1px; line-height: 1;
+    margin-bottom: 16px;
+  }
+  .digital-left h2 .accent { color: var(--terra); }
+  .digital-left p { font-size: 15px; color: var(--muted); line-height: 1.65; max-width: 420px; margin-bottom: 28px; }
+  .platforms-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+  .plat-tag {
+    padding: 6px 14px; border-radius: 20px; font-size: 13px;
+    background: var(--cream); border: 1px solid var(--border);
+    font-weight: 500;
+  }
+  .digital-cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--text); color: var(--cream);
+    padding: 13px 24px; border-radius: 24px; font-size: 13px;
+    font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+    cursor: pointer; border: none; transition: opacity 0.2s;
+  }
+  .digital-cta:hover { opacity: 0.8; }
+  .ops-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .op-card {
+    background: var(--cream); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .op-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+  .op-header { display: flex; align-items: center; gap: 10px; }
+  .op-logo {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 11px; color: #fff;
+  }
+  .op-name-text { font-weight: 600; font-size: 14px; }
+  .op-go-row { display: flex; flex-wrap: wrap; gap: 4px; }
+  .go-tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 8px;
+    background: var(--cream2); color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .op-action {
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--terra); font-weight: 500; display: flex; align-items: center; gap: 4px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--dark2); color: var(--cream); padding: 60px 56px 0;
+  }
+  .footer-top {
+    display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+    gap: 40px; padding-bottom: 48px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .footer-logo-block .logo {
+    font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800;
+    margin-bottom: 12px;
+  }
+  .footer-logo-block .logo .ilu { color: var(--terra); font-style: italic; }
+  .footer-logo-block p { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.65; max-width: 260px; margin-bottom: 20px; }
+  .newsletter-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 10px; }
+  .newsletter-form { display: flex; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 8px; }
+  .newsletter-form input {
+    background: transparent; border: none; outline: none;
+    color: white; font-size: 13px; flex: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .newsletter-form input::placeholder { color: rgba(255,255,255,0.3); }
+  .newsletter-form button {
+    background: none; border: none; color: var(--terra);
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 500; cursor: pointer; white-space: nowrap;
+  }
+  .footer-col h5 {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(255,255,255,0.35); margin-bottom: 16px; font-weight: 500;
+  }
+  .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .footer-col ul li a {
+    font-size: 13px; color: rgba(255,255,255,0.6); text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer-col ul li a:hover { color: white; }
+  .footer-bottom {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 0; font-size: 12px; color: rgba(255,255,255,0.3);
+  }
+  .payment-pills { display: flex; gap: 8px; }
+  .payment-pill {
+    padding: 4px 10px; border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.15); font-size: 11px;
+    color: rgba(255,255,255,0.5); font-weight: 500;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    nav { padding: 0 20px; }
+    .nav-links { display: none; }
+    .hero { grid-template-columns: 1fr; }
+    .hero-right { display: none; }
+    .hero-left { padding: 40px 24px; }
+    .section { padding: 40px 24px; }
+    .stats-bar { flex-wrap: wrap; }
+    .stat { min-width: 50%; }
+    .cats-grid { grid-template-columns: 1fr 1fr; }
+    .prods-grid { grid-template-columns: 1fr 1fr; }
+    .manifesto { grid-template-columns: 1fr; padding: 40px 24px; gap: 36px; }
+    .piece-semaine { grid-template-columns: 1fr; }
+    .piece-photo { min-height: 220px; }
+    .piece-right { padding: 36px 24px; }
+    .digital-grid { grid-template-columns: 1fr; }
+    .ops-grid { grid-template-columns: 1fr 1fr; }
+    .footer-top { grid-template-columns: 1fr 1fr; }
+    .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+    .manifesto { grid-template-columns: 1fr; }
+    .manifesto-right { grid-template-columns: 1fr 1fr; }
+    .ticker-item { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo"><span class="ilu">ILU</span>&nbsp;<span class="shop">SHOP.</span></div>
+  <div class="nav-links">
+    <a href="#">Accueil</a>
+    <a href="#">Catalogue</a>
+    <a href="#">Mode</a>
+    <a href="#">High-Tech</a>
+    <a href="#">À la une</a>
+  </div>
+  <div class="nav-right">
+    <div class="devise-toggle">
+      <span class="active">USD</span>
+      <span>CDF</span>
+    </div>
+    <button class="nav-icon-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    </button>
+    <button class="nav-icon-btn user">L</button>
+    <button class="nav-icon-btn">♡</button>
+    <button class="cart-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+      0
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-left">
+    <div class="hero-label">Next Arrival — Saison 2026</div>
+    <h1>YOUR<br>STYLE<br>YOUR<br><span class="accent">STORY.</span></h1>
+    <p class="hero-sub">Mode & High-Tech, sélection éditoriale. Des pièces choisies, des prix en USD et FC, une équipe qui vous parle vraiment.</p>
+    <button class="hero-cta">Découvrir la collection →</button>
+  </div>
+  <div class="hero-right">
+    <div class="hero-img-placeholder">🧥</div>
+    <div class="hero-float-card">
+      <div class="float-img">👜</div>
+      <div>
+        <div class="float-label">New Arrival</div>
+        <div class="float-name">Cabas Cuir Terracotta</div>
+      </div>
+    </div>
+    <div class="hero-nav-dots">
+      <div class="hdot"><span class="line">Preview</span><span style="font-size:10px;color:#1A1410;opacity:0.4">Nature</span></div>
+      <div class="hdot"><span class="line">Trending</span><span style="font-size:10px;color:#1A1410;opacity:0.4">Tech</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-num">450+</div>
+    <div class="stat-label">Pièces sélection.</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">24h</div>
+    <div class="stat-label">Livraison Kinshasa</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">USD / FC</div>
+    <div class="stat-label">Bi-devise</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">4 ops.</div>
+    <div class="stat-label">Data mobile</div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <div class="ticker-item">ILU SHOP <span class="dot">✦</span></div>
+    <div class="ticker-item">NEW SEASON 2026 <span class="dot">✦</span></div>
+    <div class="ticker-item">MODE & TECH <span class="dot">✦</span></div>
+    <div class="ticker-item">LIVRAISON RDC <span class="dot">✦</span></div>
+    <div class="ticker-item">SERVICES DIGITAUX <span class="dot">✦</span></div>
+    <div class="ticker-item">MOBILE MONEY <span class="dot">✦</span></div>
+    <div class="ticker-item">ILU SHOP <span class="dot">✦</span></div>
+    <div class="ticker-item">NEW SEASON 2026 <span class="dot">✦</span></div>
+    <div class="ticker-item">MODE & TECH <span class="dot">✦</span></div>
+    <div class="ticker-item">LIVRAISON RDC <span class="dot">✦</span></div>
+    <div class="ticker-item">SERVICES DIGITAUX <span class="dot">✦</span></div>
+    <div class="ticker-item">MOBILE MONEY <span class="dot">✦</span></div>
+  </div>
+</div>
+
+<!-- CATÉGORIES TENDANCE -->
+<div class="section">
+  <div class="section-heading-row">
+    <div>
+      <div class="section-eyebrow">Explorer</div>
+      <div class="section-heading">Catégories tendance</div>
+    </div>
+    <a class="tout-voir">Tout voir →</a>
+  </div>
+  <div class="cats-grid">
+    <div class="cat-card cat-mode">
+      <div>
+        <div class="count">11 produits</div>
+        <div class="cat-name">Mode</div>
+        <div class="cat-sub">Vêtements, vestes, sacs, accessoires</div>
+      </div>
+      <div class="cat-bottom">
+        <div class="cat-img">🧥</div>
+        <div class="explorer-btn">Explorer →</div>
+      </div>
+    </div>
+    <div class="cat-card cat-phones">
+      <div>
+        <div class="count">24 produits</div>
+        <div class="cat-name">Téléphones</div>
+        <div class="cat-sub">Smartphones et accessoires</div>
+      </div>
+      <div class="cat-bottom">
+        <div class="cat-img">📱</div>
+        <div class="explorer-btn">Explorer →</div>
+      </div>
+    </div>
+    <div class="cat-card cat-ordi">
+      <div>
+        <div class="count">16 produits</div>
+        <div class="cat-name">Ordinateurs</div>
+        <div class="cat-sub">Laptops, ultrabooks, bureautique</div>
+      </div>
+      <div class="cat-bottom">
+        <div class="cat-img">💻</div>
+        <div class="explorer-btn">Explorer →</div>
+      </div>
+    </div>
+    <div class="cat-card cat-digital">
+      <div>
+        <div class="count">Livraison instantanée</div>
+        <div class="cat-name">Digital</div>
+        <div class="cat-sub">Abonnements & forfaits data</div>
+      </div>
+      <div class="cat-bottom">
+        <div class="cat-img">📡</div>
+        <div class="explorer-btn">Explorer →</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- À LA UNE -->
+<div class="section" style="padding-top:0">
+  <div class="section-heading-row">
+    <div>
+      <div class="section-eyebrow">À la une</div>
+      <div class="section-heading" style="margin-bottom:0">À la une.</div>
+      <p style="font-size:14px;color:var(--muted);margin-top:10px;max-width:420px">Pièces choisies à la main par l'équipe ILU SHOP — produits détourés, prêts à porter.</p>
+    </div>
+    <a class="tout-voir">Tout voir →</a>
+  </div>
+  <div style="margin-top:24px" class="prods-grid">
+    <div class="prod-card">
+      <div class="prod-photo">
+        <span class="prod-badge-tag badge-une">À la une</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">🧥</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.8</div>
+      <div class="prod-name">Veste Cargo Beige</div>
+      <div class="prod-desc">Coupe oversize, coton lavé</div>
+      <div class="prod-price-row">
+        <span class="prod-price">$89.00</span>
+        <span class="prod-price-fc">/ 178 000 FC</span>
+        <span class="prod-price-old">$112.00</span>
+      </div>
+      <div class="prod-colors">
+        <div class="color-dot" style="background:#D4B49A"></div>
+        <div class="color-dot" style="background:#C4512A"></div>
+        <div class="color-dot" style="background:#3A4A3A"></div>
+      </div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-photo" style="background:#E8E0D8">
+        <span class="prod-badge-tag badge-trend">Tendance</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">👟</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.6</div>
+      <div class="prod-name">Sneakers Blanc Minimal</div>
+      <div class="prod-desc">Cuir grainé, semelle vulcanisée</div>
+      <div class="prod-price-row">
+        <span class="prod-price">$49.00</span>
+        <span class="prod-price-fc">/ 98 000 FC</span>
+      </div>
+      <div class="prod-colors">
+        <div class="color-dot" style="background:#F5F0E8"></div>
+        <div class="color-dot" style="background:#1A1410"></div>
+      </div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-photo" style="background:#2A2A2A">
+        <span class="prod-badge-tag badge-new">Nouveau</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">👜</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.9</div>
+      <div class="prod-name">Cabas Cuir Terracotta</div>
+      <div class="prod-desc">Cuir pleine fleur, finition à la main</div>
+      <div class="prod-price-row">
+        <span class="prod-price">$145.00</span>
+        <span class="prod-price-fc">/ 290 000 FC</span>
+      </div>
+      <div class="prod-colors">
+        <div class="color-dot" style="background:#C4512A"></div>
+        <div class="color-dot" style="background:#8B6355"></div>
+        <div class="color-dot" style="background:#1A1410"></div>
+      </div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-photo" style="background:#E0DCE0">
+        <span class="prod-badge-tag badge-new">Nouveau</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">🧥</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.7</div>
+      <div class="prod-name">Sweat Oversize Crème</div>
+      <div class="prod-desc">Molleton lourd 480g</div>
+      <div class="prod-price-row">
+        <span class="prod-price">$65.00</span>
+        <span class="prod-price-fc">/ 130 000 FC</span>
+      </div>
+      <div class="prod-colors">
+        <div class="color-dot" style="background:#F2EDE4"></div>
+        <div class="color-dot" style="background:#F2EDE4;border:1.5px solid #ccc"></div>
+        <div class="color-dot" style="background:#1A1410"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MANIFESTO -->
+<div class="manifesto">
+  <div class="manifesto-left">
+    <div class="manifesto-label">Manifesto</div>
+    <h2>Chaque pièce<br>a une<br><span class="accent">histoire.</span></h2>
+    <p class="manifesto-text">ILU SHOP, c'est l'idée que vos vêtements et vos outils tech doivent vous ressembler. Une sélection humaine, un chat humain, une livraison humaine.</p>
+    <a class="manifesto-link">Notre démarche →</a>
+  </div>
+  <div class="manifesto-right">
+    <div class="mani-card">
+      <div class="mani-icon">○</div>
+      <h4>Bi-Devise</h4>
+      <p>Prix affichés en USD et CDF, taux mis à jour quotidiennement par notre équipe.</p>
+    </div>
+    <div class="mani-card">
+      <div class="mani-icon">✦</div>
+      <h4>Chat Commande</h4>
+      <p>Pas de tunnel de paiement froid. On discute, on s'entend, on livre.</p>
+    </div>
+    <div class="mani-card">
+      <div class="mani-icon">□</div>
+      <h4>Livraison RDC</h4>
+      <p>Kinshasa sous 24h. Reste du pays : nous convenons des modalités ensemble.</p>
+    </div>
+    <div class="mani-card">
+      <div class="mani-icon">△</div>
+      <h4>Mobile Money</h4>
+      <p>M-Pesa, Airtel Money, Orange Money, virement, cash — vous choisissez.</p>
+    </div>
+  </div>
+</div>
+
+<!-- BEST SELLERS -->
+<div class="section">
+  <div class="section-heading-row">
+    <div>
+      <div class="section-eyebrow">Best Sellers</div>
+      <div class="section-heading" style="margin-bottom:0">Les préférés.</div>
+    </div>
+    <a class="tout-voir">Tout voir →</a>
+  </div>
+  <div style="margin-top:24px" class="prods-grid">
+    <div class="prod-card">
+      <div class="prod-photo" style="background:#2A2A2A">
+        <span class="prod-badge-tag badge-new">Nouveau</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">👜</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.9</div>
+      <div class="prod-name">Cabas Cuir Terracotta</div>
+      <div class="prod-desc">Cuir pleine fleur, finition à la main</div>
+      <div class="prod-price-row"><span class="prod-price">$145.00</span><span class="prod-price-fc">/ 290 000 FC</span></div>
+      <div class="prod-colors"><div class="color-dot" style="background:#C4512A"></div><div class="color-dot" style="background:#8B6355"></div><div class="color-dot" style="background:#1A1410"></div></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-photo" style="background:#E8E8E0">
+        <span class="prod-badge-tag badge-trend">Tendance</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">💻</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.9</div>
+      <div class="prod-name">Craft Laptop 14"</div>
+      <div class="prod-desc">M3, 16GB RAM, 512GB SSD</div>
+      <div class="prod-price-row"><span class="prod-price">$1 299.00</span><span class="prod-price-fc">/ 2 598 000 FC</span></div>
+      <div class="prod-colors"><div class="color-dot" style="background:#B0B0A8"></div><div class="color-dot" style="background:#1A1410"></div></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-photo" style="background:#DDE8F0">
+        <span class="prod-badge-tag badge-une">À la une</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">👠</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.9</div>
+      <div class="prod-name">Bottines Cuir Cognac</div>
+      <div class="prod-desc">Cuir tanné, semelle Goodyear</div>
+      <div class="prod-price-row"><span class="prod-price">$195.00</span><span class="prod-price-fc">/ 390 000 FC</span></div>
+      <div class="prod-colors"><div class="color-dot" style="background:#A0724A"></div><div class="color-dot" style="background:#1A1410"></div></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-photo">
+        <span class="prod-badge-tag badge-une">À la une</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">🧥</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.8</div>
+      <div class="prod-name">Veste Cargo Beige</div>
+      <div class="prod-desc">Coupe oversize, coton lavé</div>
+      <div class="prod-price-row"><span class="prod-price">$89.00</span><span class="prod-price-fc">/ 178 000 FC</span><span class="prod-price-old">$112.00</span></div>
+      <div class="prod-colors"><div class="color-dot" style="background:#D4B49A"></div><div class="color-dot" style="background:#C4512A"></div><div class="color-dot" style="background:#3A4A3A"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- PIÈCE DE LA SEMAINE -->
+<div class="piece-semaine">
+  <div class="piece-photo">
+    <div class="piece-photo-inner">👟</div>
+  </div>
+  <div class="piece-right">
+    <div class="eyebrow">Pièce de la semaine</div>
+    <h2>FEEL<br>THE<br><span class="accent">VIBES.</span></h2>
+    <p>Sneakers minimalistes en cuir grainé blanc cassé. Une silhouette épurée pensée pour durer, semelle vulcanisée confortable, lacets cirés tissés à la main.</p>
+    <div class="piece-price">
+      <div class="price">$49.00</div>
+      <div class="price-fc">≈ 98 000 FC</div>
+    </div>
+    <button class="discover-btn">Découvrir →</button>
+  </div>
+</div>
+
+<!-- SERVICES DIGITAUX -->
+<div class="digital-section">
+  <div class="section-eyebrow">Services digitaux</div>
+  <div class="digital-grid">
+    <div class="digital-left">
+      <h2>Pas de carte bancaire ?<br><span class="accent">Pas de problème.</span></h2>
+      <p>Netflix, Spotify, Adobe, Microsoft 365 — obtenez vos abonnements en quelques minutes, payés en Mobile Money ou cash. Livraison instantanée.</p>
+      <div class="platforms-row">
+        <span class="plat-tag">Netflix</span>
+        <span class="plat-tag">Spotify</span>
+        <span class="plat-tag">YouTube Premium</span>
+        <span class="plat-tag">Canva Pro</span>
+        <span class="plat-tag">Microsoft 365</span>
+        <span class="plat-tag">Adobe CC</span>
+        <span class="plat-tag">Xbox Game Pass</span>
+      </div>
+      <button class="digital-cta">Voir tous les abonnements →</button>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Recharger sa data</div>
+      <div class="ops-grid">
+        <div class="op-card">
+          <div class="op-header">
+            <div class="op-logo" style="background:#E8003D">VOD</div>
+            <div class="op-name-text">Vodacom</div>
+          </div>
+          <div class="op-go-row">
+            <span class="go-tag">1 Go</span><span class="go-tag">3 Go</span>
+            <span class="go-tag">5 Go</span><span class="go-tag">10 Go</span><span class="go-tag">20 Go</span>
+          </div>
+          <div class="op-action">Recharger →</div>
+        </div>
+        <div class="op-card">
+          <div class="op-header">
+            <div class="op-logo" style="background:#EF3D3D">AIR</div>
+            <div class="op-name-text">Airtel</div>
+          </div>
+          <div class="op-go-row">
+            <span class="go-tag">1 Go</span><span class="go-tag">3 Go</span>
+            <span class="go-tag">5 Go</span><span class="go-tag">10 Go</span><span class="go-tag">20 Go</span>
+          </div>
+          <div class="op-action">Recharger →</div>
+        </div>
+        <div class="op-card">
+          <div class="op-header">
+            <div class="op-logo" style="background:#005BAA">AFC</div>
+            <div class="op-name-text">Africell</div>
+          </div>
+          <div class="op-go-row">
+            <span class="go-tag">1 Go</span><span class="go-tag">3 Go</span>
+            <span class="go-tag">5 Go</span><span class="go-tag">10 Go</span>
+          </div>
+          <div class="op-action">Recharger →</div>
+        </div>
+        <div class="op-card">
+          <div class="op-header">
+            <div class="op-logo" style="background:#FF6600">ORA</div>
+            <div class="op-name-text">Orange</div>
+          </div>
+          <div class="op-go-row">
+            <span class="go-tag">1 Go</span><span class="go-tag">3 Go</span>
+            <span class="go-tag">5 Go</span><span class="go-tag">10 Go</span>
+          </div>
+          <div class="op-action">Recharger →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RECOMMANDÉS -->
+<div class="section">
+  <div class="section-heading-row">
+    <div>
+      <div class="section-eyebrow">Sélection personnalisée</div>
+      <div class="section-heading" style="margin-bottom:0">Recommandés pour toi</div>
+    </div>
+    <a class="tout-voir" style="color:var(--terra);border-color:var(--terra)">Tout voir →</a>
+  </div>
+  <div style="margin-top:24px" class="prods-grid">
+    <div class="prod-card">
+      <div class="prod-photo">
+        <span class="prod-badge-tag badge-une">À la une</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">🧥</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.8</div>
+      <div class="prod-name">Veste Cargo Beige</div>
+      <div class="prod-desc">Coupe oversize, coton lavé</div>
+      <div class="prod-price-row"><span class="prod-price">$89.00</span><span class="prod-price-fc">/ 178 000 FC</span><span class="prod-price-old">$112.00</span></div>
+      <div class="prod-colors"><div class="color-dot" style="background:#D4B49A"></div><div class="color-dot" style="background:#C4512A"></div><div class="color-dot" style="background:#3A4A3A"></div></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-photo" style="background:#E8E0D8">
+        <span class="prod-badge-tag badge-trend">Tendance</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">👟</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.6</div>
+      <div class="prod-name">Sneakers Blanc Minimal</div>
+      <div class="prod-desc">Cuir grainé, semelle vulcanisée</div>
+      <div class="prod-price-row"><span class="prod-price">$49.00</span><span class="prod-price-fc">/ 98 000 FC</span></div>
+      <div class="prod-colors"><div class="color-dot" style="background:#F5F0E8"></div><div class="color-dot" style="background:#1A1410"></div></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-photo" style="background:#D8E4E8">
+        <span class="prod-badge-tag badge-promo">Promo</span>
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">🧥</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.7</div>
+      <div class="prod-name">Manteau Laine Camel</div>
+      <div class="prod-desc">Laine recyclée, coupe droite</div>
+      <div class="prod-price-row"><span class="prod-price">$220.00</span><span class="prod-price-fc">/ 440 000 FC</span><span class="prod-price-old">$275.00</span></div>
+      <div class="prod-colors"><div class="color-dot" style="background:#C4A86A"></div><div class="color-dot" style="background:#8B7355"></div></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-photo" style="background:#F0EDE8">
+        <button class="heart-btn">♡</button>
+        <div class="prod-photo-inner">👓</div>
+        <div class="prod-hover">Voir le produit →</div>
+      </div>
+      <div class="prod-rating">★ 4.5</div>
+      <div class="prod-name">Lunettes Rondes Acétate</div>
+      <div class="prod-desc">Acétate écaille, verres anti-reflet</div>
+      <div class="prod-price-row"><span class="prod-price">$38.00</span><span class="prod-price-fc">/ 76 000 FC</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div class="footer-logo-block">
+      <div class="logo"><span class="ilu">ILU</span> SHOP.</div>
+      <p>I Love You Shop. Mode & High-Tech. Sélection éditoriale, paiement convenu, livraison partout en RDC.</p>
+      <div class="newsletter-label">Newsletter</div>
+      <div class="newsletter-form">
+        <input type="email" placeholder="votre@email.com">
+        <button>S'inscrire →</button>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h5>Catalogue</h5>
+      <ul>
+        <li><a href="#">Mode</a></li>
+        <li><a href="#">Téléphones</a></li>
+        <li><a href="#">Ordinateurs</a></li>
+        <li><a href="#">Tablettes</a></li>
+        <li><a href="#">Services digitaux</a></li>
+        <li><a href="#">À la une</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Aide</h5>
+      <ul>
+        <li><a href="#">Commander</a></li>
+        <li><a href="#">Livraison</a></li>
+        <li><a href="#">Paiement</a></li>
+        <li><a href="#">FAQ</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Société</h5>
+      <ul>
+        <li><a href="#">À propos</a></li>
+        <li><a href="#">Notre histoire</a></li>
+        <li><a href="#">Boutique</a></li>
+        <li><a href="#">Carrières</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Légal</h5>
+      <ul>
+        <li><a href="#">Confidentialité</a></li>
+        <li><a href="#">CGU</a></li>
+        <li><a href="#">Cookies</a></li>
+        <li><a href="#">RGPD</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2026 ILU SHOP — Kinshasa, RDC. Tous droits réservés.</div>
+    <div>
+      <span style="color:rgba(255,255,255,0.35);font-size:12px;margin-right:10px">Modes de paiement convenus en chat :</span>
+      <div class="payment-pills" style="display:inline-flex">
+        <span class="payment-pill">M-Pesa</span>
+        <span class="payment-pill">Airtel Money</span>
+        <span class="payment-pill">Orange Money</span>
+        <span class="payment-pill">Cash</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.querySelector('.devise-toggle').addEventListener('click', function(e) {
+    if (e.target.tagName === 'SPAN') {
+      this.querySelectorAll('span').forEach(s => s.classList.remove('active'));
+      e.target.classList.add('active');
+    }
+  });
+</script>
+</body>
+</html>
