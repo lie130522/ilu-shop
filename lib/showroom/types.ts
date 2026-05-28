@@ -50,6 +50,8 @@ export interface OutfitDot {
   itemIndex: number;
 }
 
+export type OutfitCreationMode = 'photo' | 'mannequin' | 'ai';
+
 export interface Outfit {
   id: string;
   name: string;
@@ -59,6 +61,8 @@ export interface Outfit {
   badgeType?: OutfitBadgeType;
   /** 'published' = visible côté client ; 'draft' = admin uniquement */
   status: 'published' | 'draft';
+  /** Mode de création : photo manuelle, mannequin vectoriel ou flat lay IA */
+  creationMode?: OutfitCreationMode;
   /** URLs Firebase Storage des photos (ordre = galerie) */
   photos: string[];
   items: OutfitItem[];
