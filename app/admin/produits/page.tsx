@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import {
@@ -11,26 +11,41 @@ import {
 import {
   updateProductStatusInFirestore,
   deleteProductFromFirestore,
+  subscribeFirestoreProducts,
 } from '@/lib/firebase/products';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { formatUSD } from '@/lib/currency';
 import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
+import type { Product } from '@/lib/types';
 
 // À la une > Actifs > Inactifs
 const STATUS_ORDER: Record<string, number> = { featured: 0, active: 1, inactive: 2 };
 
 export default function AdminProductsPage() {
-  const { products: seedProducts, toggleFeatured, toggleProductActive, currentAdmin } = useAdmin();
+  const { currentAdmin } = useAdmin();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'featured'>('all');
   const [tick, setTick] = useState(0);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [firestoreProducts, setFirestoreProducts] = useState<Product[]>([]);
   const refresh = () => setTick((t) => t + 1);
+
+  // ── Souscription Firestore (source de vérité cross-device) ──────────────────
+  useEffect(() => {
+    const unsub = subscribeFirestoreProducts((products) => {
+      setFirestoreProducts(products);
+    });
+    return unsub;
+  }, []);
 
   if (!currentAdmin) return null;
   if (!hasPermission(currentAdmin, 'catalog')) return <PermissionDenied permission="catalog" />;
 
+  // Produits localStorage (créés sur ce navigateur — priorité car ils ont les images base64)
   const adminCreated = typeof window !== 'undefined' ? getAdminProducts() : [];
+  const localIds = new Set(adminCreated.map((p) => p.id));
+
+  // Fusion : localStorage en premier (données complètes), puis Firestore pour les autres
   const products = [
     ...adminCreated.map((p) => ({
       id: p.id,
@@ -50,14 +65,33 @@ export default function AdminProductsPage() {
       images: p.images.map((img) => img.processedDataUrl || img.originalDataUrl),
       rating: p.rating,
       reviewCount: p.reviewCount,
-      isNew: true,
-      isFeatured: p.status === 'featured',
       _isAdminCreated: true as const,
     })),
-    ...seedProducts,
+    // Produits Firestore non présents dans localStorage (créés depuis un autre navigateur)
+    ...firestoreProducts
+      .filter((p) => !localIds.has(p.id))
+      .map((p) => ({
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        shortDescription: p.shortDescription ?? '',
+        description: p.description ?? '',
+        priceUSD: p.priceUSD,
+        oldPriceUSD: p.oldPriceUSD,
+        category: p.category,
+        subcategory: p.subcategory ?? '',
+        tags: p.tags ?? [],
+        stock: p.stock ?? 0,
+        status: p.status,
+        sizes: p.sizes ?? [],
+        colors: (p.colors ?? []).map((c) => c.name ?? ''),
+        images: p.images ?? [],
+        rating: p.rating ?? 0,
+        reviewCount: p.reviewCount ?? 0,
+        _isAdminCreated: false as const,
+      })),
   ];
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const filtered = useMemo(() => {
     return products
       .filter((p) => {
@@ -70,7 +104,8 @@ export default function AdminProductsPage() {
         return true;
       })
       .sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99));
-  }, [products, filter, search, tick]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firestoreProducts, filter, search, tick]);
 
   const handleDelete = async (id: string) => {
     deleteAdminProduct(id);
@@ -83,7 +118,7 @@ export default function AdminProductsPage() {
     <>
       <AdminTopBar
         title="Catalogue"
-        subtitle={`${products.length} produits • ${products.filter((p) => p.status === 'featured').length} à la une${adminCreated.length > 0 ? ` • ${adminCreated.length} ajouté${adminCreated.length > 1 ? 's' : ''} par l'admin` : ''}`}
+        subtitle={`${products.length} produit${products.length > 1 ? 's' : ''} • ${products.filter((p) => p.status === 'featured').length} à la une`}
       />
 
       <div className="p-8">
@@ -232,11 +267,7 @@ export default function AdminProductsPage() {
                           type="button"
                           onClick={() => {
                             const newStatus = product.status === 'featured' ? 'active' : 'featured';
-                            if ((product as { _isAdminCreated?: boolean })._isAdminCreated) {
-                              updateAdminProductStatus(product.id, newStatus);
-                            } else {
-                              toggleFeatured(product.id);
-                            }
+                            updateAdminProductStatus(product.id, newStatus);
                             updateProductStatusInFirestore(product.id, newStatus);
                             refresh();
                           }}
@@ -260,11 +291,7 @@ export default function AdminProductsPage() {
                           type="button"
                           onClick={() => {
                             const newStatus = product.status === 'inactive' ? 'active' : 'inactive';
-                            if ((product as { _isAdminCreated?: boolean })._isAdminCreated) {
-                              updateAdminProductStatus(product.id, newStatus);
-                            } else {
-                              toggleProductActive(product.id);
-                            }
+                            updateAdminProductStatus(product.id, newStatus);
                             updateProductStatusInFirestore(product.id, newStatus);
                             refresh();
                           }}
@@ -273,34 +300,32 @@ export default function AdminProductsPage() {
                           {product.status === 'inactive' ? 'Activer' : 'Désactiver'}
                         </button>
 
-                        {/* ─ Actions CRUD (produits admin uniquement) ─ */}
-                        {(product as { _isAdminCreated?: boolean })._isAdminCreated && (
-                          <>
-                            <span className="w-px h-4 bg-line mx-0.5 shrink-0" />
-                            <Link
-                              href={`/admin/produits/${product.id}`}
-                              className="px-2.5 py-1.5 rounded text-[10px] font-display tracking-widest uppercase font-semibold bg-bone hover:bg-beige transition-colors"
-                              title="Voir les détails"
-                            >
-                              Voir
-                            </Link>
-                            <Link
-                              href={`/admin/produits/${product.id}/modifier`}
-                              className="px-2.5 py-1.5 rounded text-[10px] font-display tracking-widest uppercase font-semibold bg-bone hover:bg-beige transition-colors"
-                              title="Modifier le produit"
-                            >
-                              Modifier
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(product.id)}
-                              className="px-2.5 py-1.5 rounded text-[10px] font-display tracking-widest uppercase font-semibold text-terra hover:bg-terra/10 transition-colors"
-                              title="Supprimer"
-                            >
-                              Supprimer
-                            </button>
-                          </>
-                        )}
+                        {/* ─ Actions CRUD ─ */}
+                        <>
+                          <span className="w-px h-4 bg-line mx-0.5 shrink-0" />
+                          <Link
+                            href={`/admin/produits/${product.id}`}
+                            className="px-2.5 py-1.5 rounded text-[10px] font-display tracking-widest uppercase font-semibold bg-bone hover:bg-beige transition-colors"
+                            title="Voir les détails"
+                          >
+                            Voir
+                          </Link>
+                          <Link
+                            href={`/admin/produits/${product.id}/modifier`}
+                            className="px-2.5 py-1.5 rounded text-[10px] font-display tracking-widest uppercase font-semibold bg-bone hover:bg-beige transition-colors"
+                            title="Modifier le produit"
+                          >
+                            Modifier
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(product.id)}
+                            className="px-2.5 py-1.5 rounded text-[10px] font-display tracking-widest uppercase font-semibold text-terra hover:bg-terra/10 transition-colors"
+                            title="Supprimer"
+                          >
+                            Supprimer
+                          </button>
+                        </>
                       </div>
                     </td>
                   </tr>
