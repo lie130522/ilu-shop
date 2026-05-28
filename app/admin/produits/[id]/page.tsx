@@ -48,7 +48,7 @@ function firestoreProductToStoredProduct(p: Product): StoredProduct {
       sizeBytes: 0,
     })),
     videos: [],
-    colorImages: {},
+    colorImages: p.colorImageUrls ?? {},
     brand: p.brand,
     material: p.material,
     ram: p.ram,
@@ -78,6 +78,7 @@ export default function AdminProductDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
+  const [colorImageUrl, setColorImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const local = getAdminProducts().find((p) => p.id === id) ?? null;
@@ -115,6 +116,7 @@ export default function AdminProductDetailPage() {
   }
 
   const displayImage = product.images[imgIdx] ?? product.images[0];
+  const mainImageSrc = colorImageUrl ?? displayImage?.processedDataUrl ?? displayImage?.originalDataUrl;
 
   const handleStatusToggle = async (type: 'featured' | 'active') => {
     let newStatus: StoredProduct['status'];
@@ -158,17 +160,18 @@ export default function AdminProductDetailPage() {
             <div
               className="aspect-square rounded-2xl overflow-hidden bg-bone border border-line mb-4"
               style={
-                displayImage?.hasTransparentBg
+                !colorImageUrl && displayImage?.hasTransparentBg
                   ? { backgroundImage: 'repeating-conic-gradient(#ddd 0% 25%, white 0% 50%)', backgroundSize: '16px 16px' }
                   : {}
               }
             >
-              {displayImage ? (
+              {mainImageSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={displayImage.processedDataUrl || displayImage.originalDataUrl}
+                  src={mainImageSrc}
                   alt={product.name}
                   className="w-full h-full object-contain"
+                  key={mainImageSrc}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-6xl text-beige">
@@ -184,9 +187,9 @@ export default function AdminProductDetailPage() {
                   <button
                     key={img.id}
                     type="button"
-                    onClick={() => setImgIdx(i)}
+                    onClick={() => { setImgIdx(i); setColorImageUrl(null); }}
                     className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 transition-colors ${
-                      imgIdx === i ? 'border-terra' : 'border-line hover:border-terra/50'
+                      imgIdx === i && !colorImageUrl ? 'border-terra' : 'border-line hover:border-terra/50'
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -300,20 +303,46 @@ export default function AdminProductDetailPage() {
               <div>
                 <p className="font-display text-[11px] tracking-widest uppercase font-semibold text-muted mb-2">
                   Couleurs
+                  {product.colorImages && Object.keys(product.colorImages).length > 0 && (
+                    <span className="ml-2 text-terra normal-case font-normal tracking-normal text-[10px]">
+                      — cliquez pour voir l'image
+                    </span>
+                  )}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {product.colors.map((c) => (
-                    <span
-                      key={c.hex}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-line text-xs bg-bone"
-                    >
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-line/50"
-                        style={{ backgroundColor: c.hex }}
-                      />
-                      {c.label}
-                    </span>
-                  ))}
+                  {product.colors.map((c) => {
+                    const imgUrl = product.colorImages?.[c.hex];
+                    const isActive = colorImageUrl === imgUrl && !!imgUrl;
+                    return (
+                      <button
+                        key={c.hex}
+                        type="button"
+                        onClick={() => {
+                          if (!imgUrl) return;
+                          setColorImageUrl(isActive ? null : imgUrl);
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs transition-colors ${
+                          isActive
+                            ? 'border-terra bg-terra/10 font-semibold text-terra-dark'
+                            : imgUrl
+                              ? 'border-line bg-bone hover:border-terra/60 cursor-pointer'
+                              : 'border-line bg-bone cursor-default'
+                        }`}
+                        title={imgUrl ? `Voir le coloris ${c.label}` : c.label}
+                      >
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-line/50 shrink-0"
+                          style={{ backgroundColor: c.hex }}
+                        />
+                        {c.label}
+                        {imgUrl && (
+                          <span className={`ml-0.5 text-[9px] ${isActive ? 'text-terra' : 'text-terra/60'}`}>
+                            📷
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

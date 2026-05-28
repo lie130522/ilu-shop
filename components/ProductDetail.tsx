@@ -85,6 +85,7 @@ export function ProductDetail({ product }: { product: Product }) {
   const { addToCart, openChatWithProduct, wishlist, toggleWishlist, rateUpdatedAt, exchangeRate } = useShop();
   const { user } = useAuth();
   const [activeImage, setActiveImage] = useState(0);
+  const [colorImage, setColorImage] = useState<string | null>(null); // image override par couleur
   const [size, setSize] = useState<string | undefined>(product.sizes?.[0]);
   const [color, setColor] = useState<string | undefined>(product.colors?.[0]?.name);
   const [qty, setQty] = useState(1);
@@ -166,10 +167,10 @@ export function ProductDetail({ product }: { product: Product }) {
               </div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={product.images[activeImage]}
+                src={colorImage ?? product.images[activeImage]}
                 alt={product.name}
                 className="relative z-10 max-h-[90%] max-w-[90%] object-contain transition-opacity duration-300"
-                key={activeImage}
+                key={colorImage ?? activeImage}
               />
               {product.badge && (
                 <span className="absolute top-5 left-5 z-20 bg-terra text-cream font-display text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-sm">
@@ -185,9 +186,9 @@ export function ProductDetail({ product }: { product: Product }) {
                   <button
                     key={src}
                     type="button"
-                    onClick={() => setActiveImage(i)}
+                    onClick={() => { setActiveImage(i); setColorImage(null); }}
                     className={`w-20 h-20 rounded overflow-hidden border-2 transition-colors ${
-                      activeImage === i ? 'border-terra' : 'border-line hover:border-terra-light'
+                      activeImage === i && !colorImage ? 'border-terra' : 'border-line hover:border-terra-light'
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -288,11 +289,15 @@ export function ProductDetail({ product }: { product: Product }) {
                 <div className="mt-3 flex gap-2">
                   {product.colors.map((c) => {
                     const active = color === c.name;
+                    const imgUrl = product.colorImageUrls?.[c.hex];
                     return (
                       <button
                         key={c.name}
                         type="button"
-                        onClick={() => setColor(c.name)}
+                        onClick={() => {
+                          setColor(c.name);
+                          setColorImage(imgUrl ?? null);
+                        }}
                         title={c.name}
                         className={`relative w-11 h-11 rounded-full border-2 transition-transform hover:scale-105 ${
                           active ? 'border-terra' : 'border-line'
@@ -301,6 +306,10 @@ export function ProductDetail({ product }: { product: Product }) {
                       >
                         {active && (
                           <span className="absolute inset-0 ring-2 ring-terra ring-offset-2 ring-offset-cream rounded-full" />
+                        )}
+                        {/* Indicateur image disponible */}
+                        {imgUrl && !active && (
+                          <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-terra rounded-full border-2 border-cream" />
                         )}
                       </button>
                     );
