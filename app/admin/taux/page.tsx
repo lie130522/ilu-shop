@@ -89,7 +89,7 @@ export default function AdminRatePage() {
                   type="number"
                   min={500}
                   max={10000}
-                  step={50}
+                  step={1}
                   value={newRate}
                   onChange={(e) => {
                     setNewRate(e.target.value);
