@@ -6,6 +6,7 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   deleteDoc,
   query,
@@ -58,6 +59,11 @@ export async function saveProductToFirestore(product: StoredProduct): Promise<vo
       try {
         const dataUrl = img.processedDataUrl || img.originalDataUrl;
         if (!dataUrl) return;
+        // Image already on Firebase Storage (Firestore-only product being re-edited)
+        if (dataUrl.startsWith('http://') || dataUrl.startsWith('https://')) {
+          imageUrls[idx] = dataUrl;
+          return;
+        }
         const url = await uploadProductImage(product.id, img.id || `img-${idx}`, dataUrl);
         imageUrls[idx] = url;
       } catch (err: unknown) {
@@ -137,6 +143,24 @@ export async function saveProductToFirestore(product: StoredProduct): Promise<vo
   };
 
   await setDoc(doc(db, 'products', product.id), firestoreDoc);
+}
+
+// ── Lecture produit par ID ────────────────────────────────────────────────────
+
+/**
+ * Fetches a single product from Firestore by its document ID.
+ * Used by admin detail/modifier pages for products not in localStorage.
+ * Returns null if not found or on error.
+ */
+export async function getProductByIdFirestore(id: string): Promise<Product | null> {
+  try {
+    const snap = await getDoc(doc(db, 'products', id));
+    if (!snap.exists()) return null;
+    return { ...(snap.data() as Product), id: snap.id };
+  } catch (err) {
+    console.error('[products] getProductByIdFirestore error:', err);
+    return null;
+  }
 }
 
 // ── Lecture produit par slug ──────────────────────────────────────────────────

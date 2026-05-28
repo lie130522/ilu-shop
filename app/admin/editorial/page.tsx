@@ -1,14 +1,33 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { formatUSD } from '@/lib/currency';
 import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
+import {
+  subscribeFirestoreProducts,
+  updateProductStatusInFirestore,
+} from '@/lib/firebase/products';
+import { updateAdminProductStatus } from '@/lib/admin/product-store';
+import type { Product } from '@/lib/types';
 
 export default function AdminEditorialPage() {
-  const { products, toggleFeatured, currentAdmin } = useAdmin();
+  const { currentAdmin } = useAdmin();
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    return subscribeFirestoreProducts(setProducts);
+  }, []);
+
   if (!currentAdmin) return null;
   if (!hasPermission(currentAdmin, 'editorial')) return <PermissionDenied permission="editorial" />;
+
+  const handleToggleFeatured = async (p: Product) => {
+    const newStatus = p.status === 'featured' ? 'active' : 'featured';
+    updateAdminProductStatus(p.id, newStatus); // localStorage (no-op si Firestore uniquement)
+    await updateProductStatusInFirestore(p.id, newStatus);
+  };
 
   const featured = products.filter((p) => p.status === 'featured');
   const candidates = products.filter((p) => p.status === 'active' && p.stock > 0);
@@ -69,7 +88,7 @@ export default function AdminEditorialPage() {
                     <div className="text-[11px] text-muted">{formatUSD(p.priceUSD)} • Stock {p.stock}</div>
                     <button
                       type="button"
-                      onClick={() => toggleFeatured(p.id)}
+                      onClick={() => handleToggleFeatured(p)}
                       className="mt-3 w-full font-display text-[10px] tracking-widest uppercase font-semibold bg-terra/15 hover:bg-terra hover:text-cream text-terra-dark py-2 rounded-full transition-colors"
                     >
                       Retirer
@@ -108,7 +127,7 @@ export default function AdminEditorialPage() {
                     <div className="text-[11px] text-muted">{formatUSD(p.priceUSD)} • Stock {p.stock}</div>
                     <button
                       type="button"
-                      onClick={() => toggleFeatured(p.id)}
+                      onClick={() => handleToggleFeatured(p)}
                       className="mt-3 w-full font-display text-[10px] tracking-widest uppercase font-semibold bg-bone hover:bg-terra hover:text-cream text-ink py-2 rounded-full transition-colors"
                     >
                       ★ Mettre à la une

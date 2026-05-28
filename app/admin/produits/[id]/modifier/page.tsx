@@ -11,7 +11,8 @@ import {
   SUBCATEGORIES,
   type StoredProduct,
 } from '@/lib/admin/product-store';
-import { saveProductToFirestore } from '@/lib/firebase/products';
+import { saveProductToFirestore, getProductByIdFirestore } from '@/lib/firebase/products';
+import type { Product } from '@/lib/types';
 import {
   STEPS,
   type Step,
@@ -24,6 +25,54 @@ import {
   StepPublication,
   FormSidebar,
 } from '../../_components/product-form';
+
+// ── Conversion Product (Firestore) → StoredProduct ───────────────────────────
+function firestoreProductToStoredProduct(p: Product): StoredProduct {
+  const now = new Date().toISOString();
+  return {
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    category: p.category as StoredProduct['category'],
+    subcategory: p.subcategory ?? '',
+    priceUSD: p.priceUSD,
+    oldPriceUSD: p.oldPriceUSD,
+    shortDescription: p.shortDescription ?? '',
+    description: p.description ?? '',
+    stock: p.stock ?? 0,
+    tags: p.tags ?? [],
+    sizes: p.sizes ?? [],
+    colors: (p.colors ?? []).map((c) => ({ label: c.name ?? '', hex: c.hex ?? '' })),
+    images: (p.images ?? []).map((url, i) => ({
+      id: `img-${i}`,
+      originalDataUrl: url,
+      processedDataUrl: url,
+      hasTransparentBg: false,
+      pipelineStatus: 'done' as const,
+      width: 0,
+      height: 0,
+      sizeBytes: 0,
+    })),
+    videos: [],
+    colorImages: {},
+    brand: p.brand,
+    material: p.material,
+    ram: p.ram,
+    connectivity: p.connectivity,
+    genre: p.genre,
+    modele: p.modele,
+    platform: p.platform,
+    deliveryMode: p.deliveryMode,
+    rdcAvailability: p.rdcAvailability,
+    descriptionTone: p.descriptionTone,
+    status: p.status,
+    badge: p.badge === 'featured' ? undefined : p.badge,
+    rating: p.rating ?? 0,
+    reviewCount: p.reviewCount ?? 0,
+    createdAt: (p as unknown as { createdAt?: string }).createdAt ?? now,
+    updatedAt: now,
+  };
+}
 
 // ── Conversion StoredProduct → FormState ──────────────────────────────────────
 
@@ -74,15 +123,22 @@ export default function ModifierProduitPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  // Chargement du produit depuis localStorage
+  // Chargement : localStorage d'abord, fallback Firestore
   useEffect(() => {
-    const found = getAdminProducts().find((p) => p.id === id) ?? null;
-    setExistingProduct(found);
-    if (found) {
-      setForm(productToForm(found));
-      // Si le produit a des tags, les mettre en place
+    const local = getAdminProducts().find((p) => p.id === id) ?? null;
+    if (local) {
+      setExistingProduct(local);
+      setForm(productToForm(local));
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    // Produit créé sur un autre navigateur : récupérer depuis Firestore
+    getProductByIdFirestore(id).then((fp) => {
+      const converted = fp ? firestoreProductToStoredProduct(fp) : null;
+      setExistingProduct(converted);
+      if (converted) setForm(productToForm(converted));
+      setLoading(false);
+    });
   }, [id]);
 
   if (!currentAdmin) return null;

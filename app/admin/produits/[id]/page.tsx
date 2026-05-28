@@ -14,8 +14,59 @@ import {
 import {
   updateProductStatusInFirestore,
   deleteProductFromFirestore,
+  getProductByIdFirestore,
 } from '@/lib/firebase/products';
 import { formatUSD } from '@/lib/currency';
+import type { Product } from '@/lib/types';
+import type { ProductCategory } from '@/lib/admin/product-store';
+
+// ── Conversion Product (Firestore) → StoredProduct (affichage admin) ──────────
+function firestoreProductToStoredProduct(p: Product): StoredProduct {
+  const now = new Date().toISOString();
+  return {
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    category: p.category as ProductCategory,
+    subcategory: p.subcategory ?? '',
+    priceUSD: p.priceUSD,
+    oldPriceUSD: p.oldPriceUSD,
+    shortDescription: p.shortDescription ?? '',
+    description: p.description ?? '',
+    stock: p.stock ?? 0,
+    tags: p.tags ?? [],
+    sizes: p.sizes ?? [],
+    colors: (p.colors ?? []).map((c) => ({ label: c.name ?? '', hex: c.hex ?? '' })),
+    images: (p.images ?? []).map((url, i) => ({
+      id: `img-${i}`,
+      originalDataUrl: url,
+      processedDataUrl: url,
+      hasTransparentBg: false,
+      pipelineStatus: 'done' as const,
+      width: 0,
+      height: 0,
+      sizeBytes: 0,
+    })),
+    videos: [],
+    colorImages: {},
+    brand: p.brand,
+    material: p.material,
+    ram: p.ram,
+    connectivity: p.connectivity,
+    genre: p.genre,
+    modele: p.modele,
+    platform: p.platform,
+    deliveryMode: p.deliveryMode,
+    rdcAvailability: p.rdcAvailability,
+    descriptionTone: p.descriptionTone,
+    status: p.status,
+    badge: p.badge === 'featured' ? undefined : p.badge,
+    rating: p.rating ?? 0,
+    reviewCount: p.reviewCount ?? 0,
+    createdAt: (p as unknown as { createdAt?: string }).createdAt ?? now,
+    updatedAt: now,
+  };
+}
 
 export default function AdminProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,9 +80,17 @@ export default function AdminProductDetailPage() {
   const [imgIdx, setImgIdx] = useState(0);
 
   useEffect(() => {
-    const found = getAdminProducts().find((p) => p.id === id) ?? null;
-    setProduct(found);
-    setLoading(false);
+    const local = getAdminProducts().find((p) => p.id === id) ?? null;
+    if (local) {
+      setProduct(local);
+      setLoading(false);
+      return;
+    }
+    // Fallback : produit créé depuis un autre navigateur (Firestore uniquement)
+    getProductByIdFirestore(id).then((fp) => {
+      setProduct(fp ? firestoreProductToStoredProduct(fp) : null);
+      setLoading(false);
+    });
   }, [id]);
 
   if (!currentAdmin) return null;
