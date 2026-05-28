@@ -35,6 +35,7 @@ export function AdminSidebar() {
       badge: unreadOrders,
     },
     { href: '/admin/editorial', label: 'Éditorial', icon: <StarIcon />, permission: 'editorial' },
+    { href: '/admin/showroom', label: 'Showroom', icon: <ShowroomIcon />, permission: 'showroom' },
     { href: '/admin/taux', label: 'Taux de change', icon: <CoinIcon />, permission: 'exchange_rate' },
     { href: '/admin/clients', label: 'Clients', icon: <UsersIcon />, permission: 'clients' },
     { href: '/admin/statistiques', label: 'Statistiques', icon: <ChartIcon />, permission: 'orders' },
@@ -157,6 +158,16 @@ export function AdminSidebar() {
   );
 }
 
+function ShowroomIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="3" width="7" height="11" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      <rect x="3" y="18" width="7" height="3" rx="1" />
+    </svg>
+  );
+}
 function DashboardIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">

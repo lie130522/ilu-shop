@@ -4,6 +4,7 @@ export type AdminPermission =
   | 'catalog'
   | 'orders'
   | 'editorial'
+  | 'showroom'
   | 'clients'
   | 'exchange_rate'
   | 'notifications';
@@ -100,6 +101,7 @@ export const PERMISSION_LABEL: Record<AdminPermission, string> = {
   catalog: 'Catalogue',
   orders: 'Commandes & Chat',
   editorial: 'Éditorial',
+  showroom: 'Showroom',
   clients: 'Clients',
   exchange_rate: 'Taux de change',
   notifications: 'Notifications',

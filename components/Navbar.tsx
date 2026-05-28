@@ -10,6 +10,7 @@ import { useAllProducts } from '@/lib/hooks/useAllProducts';
 const NAV_LINKS = [
   { href: '/', label: 'Accueil' },
   { href: '/catalogue', label: 'Catalogue' },
+  { href: '/showroom', label: 'Showroom' },
   { href: '/catalogue?cat=mode', label: 'Mode' },
   { href: '/catalogue?cat=technologie', label: 'Technologie' },
   { href: '/catalogue?cat=services', label: 'Services' },

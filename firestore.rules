@@ -84,6 +84,16 @@ service cloud.firestore {
       allow read: if false;
     }
 
+    // ── Showroom outfits ──────────────────────────────────────────────────────
+    // Lecture publique : les outfits publiés sont visibles par tous.
+    // Écriture : réservée aux admins authentifiés.
+    // Suppression : réservée à l'admin principal.
+    match /outfits/{outfitId} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow delete: if isPrincipalAdmin();
+    }
+
     // ── Conversations (commandes chat) ────────────────────────────────────────
     // Créées par n'importe quel visiteur (anonyme ou connecté).
     // Lecture/écriture par UUID-as-capability : l'ID est un UUID non-devinable.
