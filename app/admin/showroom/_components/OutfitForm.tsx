@@ -9,6 +9,7 @@ import { MannequinBuilder } from './MannequinBuilder';
 import { formatUSD } from '@/lib/currency';
 import type { Outfit, OutfitItem, OutfitDot, OutfitCategory, OutfitBadgeType, OutfitCreationMode } from '@/lib/showroom/types';
 import { OUTFIT_CATEGORY_LABEL, OUTFIT_ITEM_CATEGORY_EMOJI } from '@/lib/showroom/types';
+import { ItemLinkModal } from './ItemLinkModal';
 
 // ── Types internes ────────────────────────────────────────────────────────────
 
@@ -263,9 +264,37 @@ export function OutfitForm({ initialOutfit }: OutfitFormProps) {
   const [dotPending, setDotPending] = useState<DotPending | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [linkingItemId, setLinkingItemId] = useState<string | null>(null);
+
+  const hasLinkedItem = items.some((it) => !!it.productId);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLDivElement>(null);
+
+  // Préremplissage depuis import photo (OutfitImportModal → sessionStorage)
+  useEffect(() => {
+    if (isEdit) return;
+    const raw = sessionStorage.getItem('ilu_outfit_import');
+    if (!raw) return;
+    try {
+      sessionStorage.removeItem('ilu_outfit_import');
+      const data = JSON.parse(raw) as {
+        photo?: string;
+        items?: Array<{ name: string; category: string; priceUSD: number; emoji?: string }>;
+      };
+      if (data.photo) setPhotos([data.photo]);
+      if (data.items?.length) {
+        setItems(data.items.map((it) => ({
+          id: genId(),
+          name: it.name,
+          category: it.category,
+          priceUSD: it.priceUSD,
+          emoji: it.emoji,
+        })));
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Photos ─────────────────────────────────────────────────────────────────
 
@@ -339,6 +368,20 @@ export function OutfitForm({ initialOutfit }: OutfitFormProps) {
     setItems((prev) => prev.filter((it) => it.id !== id));
   };
 
+  const relinkItem = (itemId: string, productId: string, productSlug: string, imageUrl: string) => {
+    setItems((prev) =>
+      prev.map((it) => (it.id === itemId ? { ...it, productId, productSlug, imageUrl } : it)),
+    );
+  };
+
+  const unlinkItem = (itemId: string) => {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === itemId ? { ...it, productId: undefined, productSlug: undefined } : it,
+      ),
+    );
+  };
+
   const totalUSD = items.reduce((s, it) => s + (it.priceUSD || 0), 0);
 
   // ── Dot placement ──────────────────────────────────────────────────────────
@@ -383,6 +426,12 @@ export function OutfitForm({ initialOutfit }: OutfitFormProps) {
     }
     if (items.length === 0) {
       setSaveError('Ajoutez au moins un article.');
+      return;
+    }
+    if (form.status === 'published' && !hasLinkedItem) {
+      setSaveError(
+        'Au moins un article doit être lié au catalogue pour publier cet outfit. Cliquez sur "⚠ Lier" sur un article pour le connecter ou le créer dans le catalogue.',
+      );
       return;
     }
 
@@ -686,6 +735,12 @@ export function OutfitForm({ initialOutfit }: OutfitFormProps) {
           </button>
         </div>
 
+        {items.length > 0 && !hasLinkedItem && form.status === 'published' && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+            ⚠ Aucun article n'est lié au catalogue. Liez au moins un article avant de publier — les autres pourront être proposés en précommande.
+          </div>
+        )}
+
         {items.length === 0 ? (
           <div className="py-8 text-center text-muted text-sm">
             <div className="text-3xl mb-2">👗</div>
@@ -724,11 +779,18 @@ export function OutfitForm({ initialOutfit }: OutfitFormProps) {
                     placeholder="0"
                     className="w-16 bg-cream border border-line rounded-lg px-2 py-1.5 text-sm font-display font-bold text-terra outline-none focus:border-terra text-right" />
                 </div>
-                {item.productSlug && (
-                  <span className="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-display font-bold tracking-widest uppercase shrink-0">
-                    Lié
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setLinkingItemId(item.id)}
+                  title={item.productId ? 'Lié au catalogue — cliquer pour modifier' : 'Non lié — cliquer pour lier au catalogue'}
+                  className={`text-[9px] px-2 py-0.5 rounded font-display font-bold tracking-widest uppercase shrink-0 border transition-colors ${
+                    item.productId
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                  }`}
+                >
+                  {item.productId ? '✓ Lié' : '⚠ Lier'}
+                </button>
                 <button type="button" onClick={() => removeItem(item.id)}
                   className="text-muted hover:text-terra transition-colors shrink-0 w-7 h-7 rounded flex items-center justify-center hover:bg-terra/10">
                   ✕
@@ -882,6 +944,22 @@ export function OutfitForm({ initialOutfit }: OutfitFormProps) {
       {showPicker && (
         <ProductPicker onSelect={addItem} onClose={() => setShowPicker(false)} />
       )}
+
+      {/* ── Item Link Modal ── */}
+      {linkingItemId && (() => {
+        const item = items.find((it) => it.id === linkingItemId);
+        if (!item) return null;
+        return (
+          <ItemLinkModal
+            item={item}
+            onLink={(productId, productSlug, imageUrl) =>
+              relinkItem(linkingItemId, productId, productSlug, imageUrl)
+            }
+            onUnlink={() => unlinkItem(linkingItemId)}
+            onClose={() => setLinkingItemId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

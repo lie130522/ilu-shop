@@ -9,6 +9,7 @@ import { subscribeAllOutfits, deleteOutfitFromFirestore } from '@/lib/firebase/o
 import { formatUSD } from '@/lib/currency';
 import type { Outfit, OutfitCategory } from '@/lib/showroom/types';
 import { OUTFIT_CATEGORY_LABEL } from '@/lib/showroom/types';
+import { OutfitImportModal } from './_components/OutfitImportModal';
 
 const FILTER_CATS: { val: OutfitCategory | 'all'; label: string }[] = [
   { val: 'all', label: 'Tous' },
@@ -24,6 +25,7 @@ export default function AdminShowroomPage() {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [filter, setFilter] = useState<OutfitCategory | 'all'>('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   useEffect(() => {
     return subscribeAllOutfits(setOutfits);
@@ -64,6 +66,13 @@ export default function AdminShowroomPage() {
             ))}
           </div>
           <div className="flex-1" />
+          <button
+            type="button"
+            onClick={() => setShowImportModal(true)}
+            className="font-display text-[11px] tracking-widest uppercase font-semibold border border-line hover:border-ink text-ink px-5 py-2 rounded-full transition-colors flex items-center gap-2"
+          >
+            ✨ Import photo
+          </button>
           <Link
             href="/admin/showroom/nouveau"
             className="font-display text-[11px] tracking-widest uppercase font-semibold bg-terra hover:bg-terra-dark text-cream px-5 py-2 rounded-full transition-colors"
@@ -185,6 +194,10 @@ export default function AdminShowroomPage() {
           </div>
         )}
       </div>
+
+      {showImportModal && (
+        <OutfitImportModal onClose={() => setShowImportModal(false)} />
+      )}
     </>
   );
 }

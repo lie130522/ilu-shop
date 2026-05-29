@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAdmin } from '@/components/admin/AdminProvider';
@@ -23,6 +23,15 @@ import {
   StepPublication,
   FormSidebar,
 } from '../_components/product-form';
+
+// ── Map catégorie outfit → catégorie produit ──────────────────────────────────
+
+function outfitCatToProductCat(outfitCat: string): FormState['category'] {
+  if (outfitCat === 'Tech') return 'technologie';
+  if (outfitCat === 'Wearable') return 'hybrides';
+  if (outfitCat === 'Service') return 'services';
+  return 'mode';
+}
 
 // ── Valeur initiale ───────────────────────────────────────────────────────────
 
@@ -65,6 +74,22 @@ export default function NouveauProduitPage() {
   const [tagInput, setTagInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [publishError, setPublishError] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const name = params.get('name');
+    const price = params.get('price');
+    const outfitCategory = params.get('outfitCategory');
+    if (name || price || outfitCategory) {
+      setForm((f) => ({
+        ...f,
+        ...(name ? { name } : {}),
+        ...(price ? { priceUSD: price } : {}),
+        ...(outfitCategory ? { category: outfitCatToProductCat(outfitCategory) } : {}),
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!currentAdmin) return null;
 

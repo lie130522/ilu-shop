@@ -89,6 +89,11 @@ export async function saveProductToFirestore(product: StoredProduct): Promise<vo
       Object.entries(product.colorImages).map(async ([hex, dataUrl]) => {
         if (!dataUrl) return;
         try {
+          // Si déjà une URL Firebase (uploadée par BulkFileImport), on l'utilise directement
+          if (dataUrl.startsWith('http://') || dataUrl.startsWith('https://')) {
+            colorImageUrls[hex] = dataUrl;
+            return;
+          }
           const sanitized = hex.replace('#', '');
           const url = await uploadProductImage(product.id, `color-${sanitized}`, dataUrl);
           colorImageUrls[hex] = url;
