@@ -1,28 +1,29 @@
 // ─── ILU SHOP — Gemini Image Analysis for Bulk Import ────────────────────────
 // POST /api/admin/imports/analyze-image
-// Prend une image base64 et retourne les métadonnées produit extraites par Gemini
+// Appel direct à l'API REST Gemini (v1alpha) pour contourner les limitations
+// du SDK @google/generative-ai v0.24 qui ne supporte pas les modèles 2.5
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// v1alpha requis pour les modèles Gemini 2.5 preview
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!, {
-  apiVersion: 'v1alpha',
-} as never);
+const GEMINI_MODEL  = 'gemini-2.5-flash-preview-05-20';
+const GEMINI_API_VERSION = 'v1alpha';
 
 export async function POST(req: NextRequest) {
   try {
     const { imageBase64, filename, mimeType } = (await req.json()) as {
       imageBase64: string;
-      filename: string;
-      mimeType: string;
+      filename:   string;
+      mimeType:   string;
     };
 
     if (!imageBase64) {
       return NextResponse.json({ error: 'imageBase64 requis' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'GEMINI_API_KEY manquante' }, { status: 500 });
+    }
 
     // Retirer le préfixe data URL si présent
     const base64Data = imageBase64.includes(',')
@@ -43,47 +44,62 @@ Réponds UNIQUEMENT avec du JSON valide brut (pas de \`\`\`json, pas de markdown
   "genre": "homme ou femme ou mixte ou enfant"
 }
 
-Note: le nom du fichier peut aider à identifier le produit: "${filename}"
+Nom du fichier source: "${filename}"
 
 Règles:
-- priceUSD doit être un nombre entier raisonnable en USD (vêtements: 15-80, chaussures: 40-150, parfums: 30-120, tech: 50-500)
-- Si le produit n'est pas clairement identifiable, utilise des valeurs génériques cohérentes
-- La subcategory DOIT correspondre à la catégorie choisie`;
+- priceUSD = nombre entier en USD (vêtements: 15-80, chaussures: 40-150, parfums: 30-120, tech: 50-500)
+- La subcategory DOIT correspondre exactement à la catégorie choisie`;
 
-    const result = await model.generateContent([
-      prompt,
+    // Appel direct à l'API REST Gemini en v1alpha
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/${GEMINI_API_VERSION}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
       {
-        inlineData: {
-          mimeType: mimeType || 'image/jpeg',
-          data: base64Data,
-        },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType || 'image/jpeg', data: base64Data } },
+            ],
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1024,
+          },
+        }),
       },
-    ]);
+    );
 
-    const text = result.response.text().trim();
+    if (!geminiRes.ok) {
+      const errBody = await geminiRes.text();
+      console.error('[analyze-image] Gemini HTTP error:', geminiRes.status, errBody);
+      throw new Error(`Gemini API ${geminiRes.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    const geminiData = await geminiRes.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+
+    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    if (!text) throw new Error('Réponse Gemini vide');
 
     let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(text);
     } catch {
-      // Gemini a parfois des balises markdown malgré la consigne
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error('[analyze-image] Non-JSON response:', text.slice(0, 200));
+        console.error('[analyze-image] Non-JSON:', text.slice(0, 300));
         throw new Error('Réponse Gemini non parseable');
       }
       parsed = JSON.parse(jsonMatch[0]);
     }
 
-    // Validation et nettoyage
+    // Validation
     const validCategories = ['mode', 'technologie', 'hybrides', 'services'];
-    if (!validCategories.includes(parsed.category as string)) {
-      parsed.category = 'mode';
-    }
-
-    if (typeof parsed.priceUSD !== 'number' || parsed.priceUSD <= 0) {
-      parsed.priceUSD = 30;
-    }
+    if (!validCategories.includes(parsed.category as string)) parsed.category = 'mode';
+    if (typeof parsed.priceUSD !== 'number' || parsed.priceUSD <= 0) parsed.priceUSD = 30;
 
     return NextResponse.json(parsed);
   } catch (err) {
