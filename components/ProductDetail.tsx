@@ -88,6 +88,36 @@ export function ProductDetail({ product }: { product: Product }) {
   const [colorImage, setColorImage] = useState<string | null>(null); // image override par couleur
   const [size, setSize] = useState<string | undefined>(product.sizes?.[0]);
   const [color, setColor] = useState<string | undefined>(product.colors?.[0]?.name);
+  // URLs couleur résolues — fallback Storage si colorImageUrls absent du document Firestore
+  const [resolvedColorUrls, setResolvedColorUrls] = useState<Record<string, string>>(
+    product.colorImageUrls ?? {},
+  );
+
+  useEffect(() => {
+    if (product.colorImageUrls || !product.colors?.length || !product.id) return;
+    (async () => {
+      try {
+        const [{ ref, getDownloadURL }, { storage }] = await Promise.all([
+          import('firebase/storage'),
+          import('@/lib/firebase/client'),
+        ]);
+        const resolved: Record<string, string> = {};
+        await Promise.allSettled(
+          product.colors!.map(async (c) => {
+            try {
+              const sanitized = c.hex.replace('#', '');
+              const url = await getDownloadURL(
+                ref(storage, `products/${product.id}/color-${sanitized}`),
+              );
+              resolved[c.hex] = url;
+            } catch { /* image couleur absente pour cette variante */ }
+          }),
+        );
+        if (Object.keys(resolved).length > 0) setResolvedColorUrls(resolved);
+      } catch { /* Firebase non disponible */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState<'description' | 'specs' | 'shipping'>('description');
   const [added, setAdded] = useState(false);
@@ -289,7 +319,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 <div className="mt-3 flex gap-2">
                   {product.colors.map((c) => {
                     const active = color === c.name;
-                    const imgUrl = product.colorImageUrls?.[c.hex];
+                    const imgUrl = resolvedColorUrls[c.hex];
                     return (
                       <button
                         key={c.name}
