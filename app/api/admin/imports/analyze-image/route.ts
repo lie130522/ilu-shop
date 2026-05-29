@@ -5,8 +5,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const GEMINI_MODEL  = 'gemini-2.5-flash-preview-05-20';
-const GEMINI_API_VERSION = 'v1alpha';
+const GEMINI_MODEL       = 'gemini-3.5-flash';
+const GEMINI_API_VERSION = 'v1beta';
 
 export async function POST(req: NextRequest) {
   try {
