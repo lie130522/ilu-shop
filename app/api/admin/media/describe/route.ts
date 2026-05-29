@@ -6,13 +6,39 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
+
+// ── Helper : extrait le JSON le plus robustement possible ─────────────────────
+
+function extractJSON(raw: string): Record<string, unknown> {
+  // 1. Nettoyer les balises markdown
+  const cleaned = raw
+    .replace(/^```json\s*/im, '')
+    .replace(/^```\s*/im, '')
+    .replace(/\s*```\s*$/im, '')
+    .trim();
+
+  // 2. Tentative directe
+  try { return JSON.parse(cleaned); } catch (_) { /* continue */ }
+
+  // 3. Extraction par regex — premier objet JSON valide trouvé
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch (_) { /* continue */ }
+  }
+
+  // 4. Réparation basique : fermer un JSON tronqué
+  const truncated = cleaned.replace(/,\s*$/, '') + '"}';
+  try { return JSON.parse(truncated); } catch (_) { /* continue */ }
+
+  throw new Error(`Réponse Gemini non parseable. Reçu : ${raw.slice(0, 150)}`);
+}
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'GEMINI_API_KEY manquante dans les variables d\'environnement.' },
+      { error: "GEMINI_API_KEY manquante dans les variables d'environnement." },
       { status: 503 },
     );
   }
@@ -30,8 +56,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Body invalide : ' + String(e) }, { status: 400 });
   }
 
-  // Extraire le type MIME et les données base64 pures.
-  // Si c'est une URL Firebase Storage (produits importés en masse), on télécharge d'abord.
+  // ── Résolution de l'image (URL Firebase Storage ou base64 direct) ─────────
+
   let mimeType = 'image/jpeg';
   let base64Data: string;
 
@@ -41,8 +67,7 @@ export async function POST(req: NextRequest) {
       if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status}`);
       const contentType = imgRes.headers.get('content-type') ?? 'image/jpeg';
       mimeType = contentType.split(';')[0].trim();
-      const buffer = await imgRes.arrayBuffer();
-      base64Data = Buffer.from(buffer).toString('base64');
+      base64Data = Buffer.from(await imgRes.arrayBuffer()).toString('base64');
     } catch (e) {
       return NextResponse.json(
         { error: `Impossible de récupérer l'image depuis l'URL : ${String(e)}` },
@@ -58,13 +83,14 @@ export async function POST(req: NextRequest) {
     base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
   }
 
+  // ── Prompt ────────────────────────────────────────────────────────────────
+
   const categoryLabels: Record<string, string> = {
     mode:        'Mode (vêtements, chaussures, bijoux, accessoires, parfums)',
     technologie: 'Technologie (smartphones, ordinateurs, accessoires tech)',
     hybrides:    'Wearables & Hybrides (montres connectées, bracelets fitness)',
     services:    'Services digitaux (abonnements, forfaits data)',
   };
-  const categoryLabel = categoryLabels[category] || category;
 
   const toneInstructions: Record<string, string> = {
     editorial:  'Ton éditorial : élégant, narratif, inspirationnel. Style magazine de luxe.',
@@ -72,72 +98,74 @@ export async function POST(req: NextRequest) {
     luxe:       'Ton luxe : raffiné, exclusif, vocabulaire haut de gamme, sensorialité.',
     jeune:      'Ton jeune & urbain : casual, moderne, accessible, sans jargon technique.',
   };
-  const toneInstruction = toneInstructions[tone] || toneInstructions.editorial;
 
   const prompt = `Tu es un expert en e-commerce spécialisé dans la rédaction de fiches produit pour ILU SHOP (Kinshasa, RDC).
-Analyse cette image de produit dans la catégorie "${categoryLabel}".
+Analyse cette image de produit dans la catégorie "${categoryLabels[category] || category}".
+${toneInstructions[tone] || toneInstructions.editorial}
 
-${toneInstruction}
+Réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans backticks) :
+{"name":"Nom du produit court et commercial (2-5 mots, français)","shortDescription":"Accroche courte max 80 caractères","description":"Description commerciale 150-250 mots en français, caractéristiques visuelles, matière, style, occasions d'usage","tags":["tag1","tag2","tag3","tag4","tag5"]}
 
-Réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans backticks, sans commentaires) :
-{
-  "name": "Nom du produit court et commercial (2-5 mots, en français)",
-  "shortDescription": "Accroche courte pour la carte produit (max 80 caractères, percutante)",
-  "description": "Description commerciale complète en français (150-250 mots). Décris les caractéristiques visuelles, la matière supposée, le style, les occasions de port/usage.",
-  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
-}
+Les tags = mots-clés de recherche (catégorie, matière, couleur, style, usage). JSON brut uniquement.`;
 
-Les tags doivent être des mots-clés de recherche pertinents (catégorie, matière, couleur, style, usage).
-Réponds uniquement avec le JSON brut, rien d'autre.`;
+  // ── Appel Gemini ─────────────────────────────────────────────────────────
 
   try {
-    // Appel REST direct Gemini v1alpha (SDK 0.24 ne supporte pas les modèles 2.5)
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: mimeType, data: base64Data } },
-              { text: prompt },
-            ],
-          }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+          contents: [{ parts: [
+            { inline_data: { mime_type: mimeType, data: base64Data } },
+            { text: prompt },
+          ]}],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 4096,   // Augmenté : 1024 coupait le JSON en plein milieu
+            responseMimeType: 'application/json',  // Force le mode JSON natif
+          },
         }),
       },
     );
 
     if (!geminiRes.ok) {
       const errBody = await geminiRes.text();
-      throw new Error(`Gemini ${geminiRes.status}: ${errBody.slice(0, 200)}`);
+      throw new Error(`Gemini ${geminiRes.status}: ${errBody.slice(0, 300)}`);
     }
 
     const geminiData = await geminiRes.json() as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
-    if (!rawText) throw new Error('Réponse Gemini vide');
-
-    // Nettoyer le markdown éventuel
-    const jsonText = rawText
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/\s*```$/i, '')
-      .trim();
-
-    const parsed = JSON.parse(jsonText) as {
-      name: string;
-      shortDescription: string;
-      description: string;
-      tags: string[];
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+        finishReason?: string;
+      }>;
     };
 
-    if (!parsed.name || !parsed.shortDescription || !parsed.description || !Array.isArray(parsed.tags)) {
-      throw new Error('Réponse Gemini incomplète');
+    const candidate = geminiData.candidates?.[0];
+
+    // Vérifier que la réponse n'est pas tronquée
+    if (candidate?.finishReason === 'MAX_TOKENS') {
+      throw new Error('Réponse Gemini tronquée (MAX_TOKENS). Réessaie.');
     }
 
+    const rawText = candidate?.content?.parts?.[0]?.text?.trim() ?? '';
+    if (!rawText) throw new Error('Réponse Gemini vide');
+
+    const parsed = extractJSON(rawText) as {
+      name?: string;
+      shortDescription?: string;
+      description?: string;
+      tags?: string[];
+    };
+
+    if (!parsed.name || !parsed.description) {
+      throw new Error('Réponse Gemini incomplète (champs manquants)');
+    }
+
+    // Normaliser
+    if (!parsed.shortDescription) parsed.shortDescription = parsed.description.slice(0, 80);
+    if (!Array.isArray(parsed.tags)) parsed.tags = [];
     if (parsed.shortDescription.length > 120) {
       parsed.shortDescription = parsed.shortDescription.slice(0, 117) + '…';
     }

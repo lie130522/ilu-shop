@@ -165,8 +165,16 @@ export function BulkFileImport() {
     const items = imgs.map(defaultFile);
     setFiles((prev) => [...prev, ...items]);
 
-    // Auto-analyse en parallèle (Gemini Flash est rapide)
-    items.forEach((item) => analyzeFile(item));
+    // Auto-analyse en lots de 3 pour éviter le rate-limiting Gemini
+    const BATCH = 3;
+    const runBatches = async () => {
+      for (let i = 0; i < items.length; i += BATCH) {
+        await Promise.allSettled(items.slice(i, i + BATCH).map((item) => analyzeFile(item)));
+        // Petit délai entre les lots pour respecter les limites API
+        if (i + BATCH < items.length) await new Promise((r) => setTimeout(r, 800));
+      }
+    };
+    runBatches();
   }, [analyzeFile]);
 
   const handleDrop = (e: React.DragEvent) => {
