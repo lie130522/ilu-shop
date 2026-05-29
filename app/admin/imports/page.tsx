@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
+import { BulkFileImport } from './_components/BulkFileImport';
 
 interface ScrapeResult {
   title: string;
@@ -40,7 +41,7 @@ export default function ImportsPage() {
   const [result, setResult] = useState<ScrapeResult | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
   const [sources] = useState<ImportSource[]>(MOCK_SOURCES);
-  const [activeTab, setActiveTab] = useState<'scrape' | 'sources'>('scrape');
+  const [activeTab, setActiveTab] = useState<'files' | 'scrape' | 'sources'>('files');
 
   if (!currentAdmin) return null;
   if (!hasPermission(currentAdmin, 'catalog')) return <PermissionDenied permission="catalog" />;
@@ -105,19 +106,40 @@ export default function ImportsPage() {
       <div className="p-6 lg:p-8 max-w-5xl">
         {/* Tabs */}
         <div className="flex gap-1 bg-bone rounded-lg p-1 mb-8 w-fit">
-          {(['scrape', 'sources'] as const).map((t) => (
+          {([
+            { key: 'files',   label: '📁 Depuis des fichiers' },
+            { key: 'scrape',  label: '🔍 Scraper une URL' },
+            { key: 'sources', label: '📋 Sources enregistrées' },
+          ] as const).map(({ key, label }) => (
             <button
-              key={t}
+              key={key}
               type="button"
-              onClick={() => setActiveTab(t)}
+              onClick={() => setActiveTab(key)}
               className={`px-5 py-2 rounded-md font-display text-xs font-semibold tracking-widest uppercase transition-colors ${
-                activeTab === t ? 'bg-cream shadow-sm text-ink' : 'text-muted hover:text-ink'
+                activeTab === key ? 'bg-cream shadow-sm text-ink' : 'text-muted hover:text-ink'
               }`}
             >
-              {t === 'scrape' ? '🔍 Scraper une URL' : '📋 Sources enregistrées'}
+              {label}
             </button>
           ))}
         </div>
+
+        {/* ── Fichiers tab ── */}
+        {activeTab === 'files' && (
+          <div className="space-y-4">
+            <div className="bg-cream border border-line rounded-xl p-6">
+              <h2 className="font-display font-bold text-base text-ink mb-2">
+                Import depuis des fichiers locaux
+              </h2>
+              <p className="text-sm text-muted font-light mb-6 leading-relaxed">
+                Dépose tes images directement depuis ton ordinateur.{' '}
+                <strong className="text-ink">Gemini analyse chaque article automatiquement</strong>{' '}
+                (nom, catégorie, description, prix suggéré). Tu peux tout corriger avant d'importer.
+              </p>
+              <BulkFileImport />
+            </div>
+          </div>
+        )}
 
         {/* ── Scraper tab ── */}
         {activeTab === 'scrape' && (
