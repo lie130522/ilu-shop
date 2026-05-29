@@ -5,7 +5,6 @@
 // Retourne  : { name, shortDescription, description, tags[] }
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const maxDuration = 30;
 
@@ -72,15 +71,34 @@ Les tags doivent être des mots-clés de recherche pertinents (catégorie, mati�
 Réponds uniquement avec le JSON brut, rien d'autre.`;
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey, { apiVersion: 'v1alpha' } as never);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
+    // Appel REST direct Gemini v1alpha (SDK 0.24 ne supporte pas les modèles 2.5)
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: mimeType, data: base64Data } },
+              { text: prompt },
+            ],
+          }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+        }),
+      },
+    );
 
-    const result = await model.generateContent([
-      { inlineData: { mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp', data: base64Data } },
-      { text: prompt },
-    ]);
+    if (!geminiRes.ok) {
+      const errBody = await geminiRes.text();
+      throw new Error(`Gemini ${geminiRes.status}: ${errBody.slice(0, 200)}`);
+    }
 
-    const rawText = result.response.text().trim();
+    const geminiData = await geminiRes.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    if (!rawText) throw new Error('Réponse Gemini vide');
 
     // Nettoyer le markdown éventuel
     const jsonText = rawText
@@ -96,12 +114,10 @@ Réponds uniquement avec le JSON brut, rien d'autre.`;
       tags: string[];
     };
 
-    // Validation basique
     if (!parsed.name || !parsed.shortDescription || !parsed.description || !Array.isArray(parsed.tags)) {
       throw new Error('Réponse Gemini incomplète');
     }
 
-    // Tronquer shortDescription si trop long
     if (parsed.shortDescription.length > 120) {
       parsed.shortDescription = parsed.shortDescription.slice(0, 117) + '…';
     }
