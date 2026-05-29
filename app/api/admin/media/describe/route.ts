@@ -30,13 +30,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Body invalide : ' + String(e) }, { status: 400 });
   }
 
-  // Extraire le type MIME et les données base64 pures
-  const mimeType = imageBase64.startsWith('data:image/png')
-    ? 'image/png'
-    : imageBase64.startsWith('data:image/webp')
-      ? 'image/webp'
-      : 'image/jpeg';
-  const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+  // Extraire le type MIME et les données base64 pures.
+  // Si c'est une URL Firebase Storage (produits importés en masse), on télécharge d'abord.
+  let mimeType = 'image/jpeg';
+  let base64Data: string;
+
+  if (imageBase64.startsWith('http://') || imageBase64.startsWith('https://')) {
+    try {
+      const imgRes = await fetch(imageBase64);
+      if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status}`);
+      const contentType = imgRes.headers.get('content-type') ?? 'image/jpeg';
+      mimeType = contentType.split(';')[0].trim();
+      const buffer = await imgRes.arrayBuffer();
+      base64Data = Buffer.from(buffer).toString('base64');
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Impossible de récupérer l'image depuis l'URL : ${String(e)}` },
+        { status: 400 },
+      );
+    }
+  } else {
+    mimeType = imageBase64.startsWith('data:image/png')
+      ? 'image/png'
+      : imageBase64.startsWith('data:image/webp')
+        ? 'image/webp'
+        : 'image/jpeg';
+    base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+  }
 
   const categoryLabels: Record<string, string> = {
     mode:        'Mode (vêtements, chaussures, bijoux, accessoires, parfums)',
