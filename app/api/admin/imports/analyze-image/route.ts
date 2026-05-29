@@ -5,7 +5,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// v1alpha requis pour les modèles Gemini 2.5 preview
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!, {
+  apiVersion: 'v1alpha',
+} as never);
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,10 +22,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'imageBase64 requis' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel(
-      { model: 'gemini-2.5-flash-preview-05-20' },
-      { apiVersion: 'v1alpha' },
-    );
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
 
     // Retirer le préfixe data URL si présent
     const base64Data = imageBase64.includes(',')

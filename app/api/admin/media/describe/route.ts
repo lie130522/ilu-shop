@@ -72,12 +72,8 @@ Les tags doivent être des mots-clés de recherche pertinents (catégorie, mati�
 Réponds uniquement avec le JSON brut, rien d'autre.`;
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-2.5-flash — modèle multimodal le plus récent (v1alpha requis)
-    const model = genAI.getGenerativeModel(
-      { model: 'gemini-2.5-flash-preview-05-20' },
-      { apiVersion: 'v1alpha' },
-    );
+    const genAI = new GoogleGenerativeAI(apiKey, { apiVersion: 'v1alpha' } as never);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
 
     const result = await model.generateContent([
       { inlineData: { mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp', data: base64Data } },
