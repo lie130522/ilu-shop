@@ -73,8 +73,11 @@ Réponds uniquement avec le JSON brut, rien d'autre.`;
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-2.5-flash — modèle multimodal le plus récent
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
+    // gemini-2.5-flash — modèle multimodal le plus récent (v1alpha requis)
+    const model = genAI.getGenerativeModel(
+      { model: 'gemini-2.5-flash-preview-05-20' },
+      { apiVersion: 'v1alpha' },
+    );
 
     const result = await model.generateContent([
       { inlineData: { mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp', data: base64Data } },

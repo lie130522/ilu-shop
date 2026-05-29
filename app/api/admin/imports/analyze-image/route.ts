@@ -19,7 +19,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'imageBase64 requis' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
+    const model = genAI.getGenerativeModel(
+      { model: 'gemini-2.5-flash-preview-05-20' },
+      { apiVersion: 'v1alpha' },
+    );
 
     // Retirer le préfixe data URL si présent
     const base64Data = imageBase64.includes(',')
