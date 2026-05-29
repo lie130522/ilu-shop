@@ -198,16 +198,23 @@ function OutfitCard({ outfit }: { outfit: Outfit }) {
 
               {/* Nom + catégorie */}
               <div className="flex-1 min-w-0">
-                {item.productSlug ? (
-                  <Link
-                    href={`/produit/${item.productSlug}`}
-                    className="font-medium text-sm text-ink hover:text-terra transition-colors truncate block"
-                  >
-                    {item.name}
-                  </Link>
-                ) : (
-                  <span className="font-medium text-sm text-ink truncate block">{item.name}</span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {item.productSlug ? (
+                    <Link
+                      href={`/produit/${item.productSlug}`}
+                      className="font-medium text-sm text-ink hover:text-terra transition-colors truncate"
+                    >
+                      {item.name}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-sm text-ink truncate">{item.name}</span>
+                  )}
+                  {!item.productId && (
+                    <span className="shrink-0 text-[8px] bg-terra/10 text-terra border border-terra/20 px-1.5 py-0.5 rounded font-display font-bold tracking-widest uppercase">
+                      Pré-commande
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] text-muted">{item.category}</span>
               </div>
 
