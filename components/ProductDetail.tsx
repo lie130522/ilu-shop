@@ -316,6 +316,12 @@ export function ProductDetail({ product }: { product: Product }) {
                   </span>
                   <span className="text-xs text-muted">{color}</span>
                 </div>
+                {(() => {
+                  const activeColor = product.colors?.find((c) => c.name === color);
+                  return activeColor?.note ? (
+                    <p className="mt-1 text-xs text-muted italic">{activeColor.note}</p>
+                  ) : null;
+                })()}
                 <div className="mt-3 flex gap-2">
                   {product.colors.map((c) => {
                     const active = color === c.name;

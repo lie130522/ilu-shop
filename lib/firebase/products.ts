@@ -126,8 +126,8 @@ export async function saveProductToFirestore(product: StoredProduct): Promise<vo
     ...(product.badge !== undefined ? { badge: product.badge } : {}),
     stock: product.stock,
     sizes: product.sizes,
-    // Normalize colors: StoredProduct uses { label, hex } → Product uses { name, hex }
-    colors: product.colors.map((c) => ({ name: c.label, hex: c.hex })),
+    // Normalize colors: StoredProduct uses { label, hex, note? } → Product uses { name, hex, note? }
+    colors: product.colors.map((c) => ({ name: c.label, hex: c.hex, ...(c.note ? { note: c.note } : {}) })),
     images: imageUrls.filter(Boolean),
     ...(Object.keys(colorImageUrls).length > 0 ? { colorImageUrls } : {}),
     ...(product.brand                ? { brand: product.brand }               : {}),

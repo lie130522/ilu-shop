@@ -26,6 +26,8 @@ export const DEFAULT_SIZES: Record<ProductCategory, string[]> = {
 export interface ProductColor {
   label: string;
   hex: string;
+  /** Note de design visible côté client (ex: "Avec poches poitrine") */
+  note?: string;
 }
 
 export type ImagePipelineStatus = 'idle' | 'upscaling' | 'removing_bg' | 'done' | 'error' | 'skipped';

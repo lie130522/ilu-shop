@@ -584,6 +584,10 @@ export function StepVariantes({
     set('colorImages', updated);
   };
 
+  const updateColorNote = (hex: string, note: string) => {
+    set('colors', form.colors.map((c) => c.hex === hex ? { ...c, note: note || undefined } : c));
+  };
+
   const currentPreset = VARIANT_PRESETS.find((p) => p.key === presetKey);
   const sizeLabel =
     presetKey.startsWith('chaussures') ? 'Pointures disponibles' :
@@ -887,10 +891,17 @@ export function StepVariantes({
                     className="w-10 h-10 rounded-lg border border-line/50 shrink-0"
                     style={{ backgroundColor: c.hex }}
                   />
-                  {/* Nom */}
+                  {/* Nom + note */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">{c.label}</p>
-                    <p className={`text-[11px] ${hasImage ? 'text-emerald-600' : 'text-muted'}`}>
+                    <input
+                      type="text"
+                      value={c.note ?? ''}
+                      onChange={(e) => updateColorNote(c.hex, e.target.value)}
+                      placeholder="Note design (ex: Avec poches)"
+                      className="mt-0.5 w-full text-[10px] bg-transparent border-b border-dashed border-line focus:border-terra outline-none text-muted placeholder:text-muted/40 pb-0.5"
+                    />
+                    <p className={`text-[11px] mt-0.5 ${hasImage ? 'text-emerald-600' : 'text-muted'}`}>
                       {hasImage ? '✓ Photo ajoutée' : 'Aucune photo'}
                     </p>
                   </div>

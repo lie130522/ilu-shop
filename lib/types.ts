@@ -20,7 +20,7 @@ export interface Product {
   rating?: number;
   reviewCount?: number;
   sizes?: string[];
-  colors?: { name: string; hex: string }[];
+  colors?: { name: string; hex: string; note?: string }[];
   images: string[];
   badge?: 'new' | 'sale' | 'hot' | 'featured';
   /** URLs Storage des images associées à chaque couleur (hex → URL) */
