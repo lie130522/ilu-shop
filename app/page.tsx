@@ -315,7 +315,27 @@ function getEyebrow(product: Product): string {
   return map[product.category] ?? 'Sélection';
 }
 
-// ── Hero Carousel immersif ────────────────────────────────────────────────────
+/**
+ * Découpe le nom produit en 3 lignes max pour le titre hero.
+ * La 3e ligne est colorée en terra.
+ */
+function splitHeroTitle(name: string): [string, string, string] {
+  const words = name.toUpperCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return ['', '', ''];
+  if (words.length === 1) return [words[0], '', ''];
+  if (words.length === 2) return [words[0], '', words[1]];
+  if (words.length === 3) return [words[0], words[1], words[2]];
+  // 4+ mots → 3 groupes proportionnels
+  const cut1 = Math.ceil(words.length / 3);
+  const cut2 = Math.ceil((words.length * 2) / 3);
+  return [
+    words.slice(0, cut1).join(' '),
+    words.slice(cut1, cut2).join(' '),
+    words.slice(cut2).join(' '),
+  ];
+}
+
+// ── Hero Carousel — Grid 2 colonnes strict (texte gauche / image droite) ──────
 function HeroCarousel({
   heroProducts,
   heroIndex,
@@ -334,9 +354,9 @@ function HeroCarousel({
   allProductsCount: number;
 }) {
   const current = heroProducts[heroIndex] ?? null;
-  const gradCfg = CATEGORY_GRADIENTS[current?.category ?? ''] ?? CATEGORY_GRADIENTS.default;
+  const [l1, l2, l3] = current ? splitHeroTitle(current.name) : ['', '', ''];
 
-  // Progress bar
+  // Barre de progression
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     setProgress(0);
@@ -352,8 +372,10 @@ function HeroCarousel({
 
   if (heroProducts.length === 0) {
     return (
-      <section className="relative w-full h-screen min-h-[620px] overflow-hidden flex items-center justify-center"
-        style={{ background: `linear-gradient(135deg, #1A1410 0%, #3D2A18 100%)` }}>
+      <section
+        className="relative w-full h-screen min-h-[620px] overflow-hidden flex items-center justify-center"
+        style={{ background: 'linear-gradient(135deg, #1A1410 0%, #3D2A18 100%)' }}
+      >
         <div className="text-center text-cream/40">
           <div className="font-display text-7xl mb-4">✦</div>
           <div className="font-display text-sm tracking-[0.4em] uppercase">ILU SHOP</div>
@@ -365,7 +387,7 @@ function HeroCarousel({
   return (
     <section className="relative w-full h-screen min-h-[620px] overflow-hidden">
 
-      {/* ── Slides ── */}
+      {/* ── z-index 1 : Fonds de slides (gradient ou photo lifestyle) ── */}
       {heroProducts.map((product, i) => {
         const grad = CATEGORY_GRADIENTS[product.category] ?? CATEGORY_GRADIENTS.default;
         const isActive = i === heroIndex;
@@ -373,143 +395,177 @@ function HeroCarousel({
           <div
             key={product.id}
             className="absolute inset-0 transition-opacity duration-700"
-            style={{ opacity: isActive ? 1 : 0, pointerEvents: isActive ? 'all' : 'none' }}
+            style={{ opacity: isActive ? 1 : 0, zIndex: 1, pointerEvents: 'none' }}
           >
-            {/* Fond : heroBgImage (photo lifestyle) ou gradient auto */}
             {product.heroBgImage ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={product.heroBgImage}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ transform: isActive ? 'scale(1.04)' : 'scale(1)', transition: 'transform 8s ease' }}
-                />
-              </>
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={product.heroBgImage}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{
+                  transform: isActive ? 'scale(1.04)' : 'scale(1)',
+                  transition: 'transform 8s ease',
+                }}
+              />
             ) : (
               <div
                 className="absolute inset-0"
                 style={{ background: `linear-gradient(135deg, ${grad.from} 0%, ${grad.to} 100%)` }}
               />
             )}
-            {/* Overlay dégradé gauche → droite (lisibilité du texte) */}
-            <div
-              className="absolute inset-0"
-              style={{ background: `linear-gradient(to right, ${grad.overlay} 0%, ${grad.overlay.replace('0.72', '0.25').replace('0.80', '0.25').replace('0.75', '0.25').replace('0.82', '0.25')} 55%, transparent 100%)` }}
-            />
           </div>
         );
       })}
 
-      {/* ── Image produit flottante (droite) ── */}
-      {current?.images[0] && (
-        <Link
-          href={`/produit/${current.slug}`}
-          className="absolute right-[6%] bottom-0 z-10 h-[88%] flex items-end group"
+      {/* ── z-index 2 : Overlay dégradé gauche → transparent ── */}
+      {(() => {
+        const grad = CATEGORY_GRADIENTS[current?.category ?? ''] ?? CATEGORY_GRADIENTS.default;
+        return (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              zIndex: 2,
+              background: `linear-gradient(to right, ${grad.overlay} 0%, ${grad.overlay.replace(/[\d.]+\)$/, '0.20)')} 52%, transparent 100%)`,
+            }}
+          />
+        );
+      })()}
+
+      {/* ── z-index 3-4 : Grid 2 colonnes — texte gauche / image droite ── */}
+      <div
+        className="absolute inset-0"
+        style={{ display: 'grid', gridTemplateColumns: '55% 45%', zIndex: 3 }}
+      >
+        {/* ── ZONE GAUCHE (55%) — texte uniquement, jamais d'image ── */}
+        <div
+          className="flex flex-col justify-end pb-20 pl-10 lg:pl-14 pr-6"
           style={{
-            transition: 'transform 0.7s cubic-bezier(0.22,1,0.36,1), opacity 0.5s ease',
-            transform: isTransitioning ? 'translateX(48px) scale(0.96)' : 'translateX(0) scale(1)',
+            zIndex: 4,
             opacity: isTransitioning ? 0 : 1,
+            transition: 'opacity 0.25s ease',
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={current.images[0]}
-            alt={current.name}
-            className="h-full w-auto object-contain"
-            style={{ filter: 'drop-shadow(-24px 0 60px rgba(26,20,16,0.4))' }}
-          />
-          {/* Badge "Voir le produit" au hover */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-            <span className="bg-cream/95 backdrop-blur-sm border border-line rounded-full px-5 py-2 font-display text-[10px] tracking-widest uppercase font-bold text-ink shadow-lg">
-              Voir le produit →
+          {/* Eyebrow */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-terra shrink-0" />
+            <span className="font-display text-[11px] font-medium tracking-[0.14em] uppercase text-cream/70">
+              {current ? getEyebrow(current) : ''}
             </span>
           </div>
-        </Link>
-      )}
 
-      {/* ── Contenu texte (bas-gauche) ── */}
-      <div
-        className="absolute bottom-[14%] left-0 px-8 lg:px-12 max-w-xl z-20"
-        style={{
-          transition: 'opacity 0.3s ease',
-          opacity: isTransitioning ? 0 : 1,
-        }}
-      >
-        {/* Eyebrow */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="w-1.5 h-1.5 rounded-full bg-terra shrink-0" />
-          <span className="font-display text-[11px] font-medium tracking-[0.14em] uppercase text-cream/70">
-            {current ? getEyebrow(current) : ''}
-          </span>
+          {/* Titre — max 3 lignes, dernière en terra */}
+          <h1
+            className="font-display font-extrabold text-cream uppercase mb-5"
+            style={{ fontSize: 'clamp(38px, 5.2vw, 76px)', lineHeight: '0.92', letterSpacing: '-2px' }}
+          >
+            {l1 && <span className="block">{l1}</span>}
+            {l2 && <span className="block">{l2}</span>}
+            {l3 && <span className="block text-terra">{l3}</span>}
+          </h1>
+
+          {/* Badge prix */}
+          {current && (
+            <div
+              className="inline-flex items-baseline gap-2 mb-4 px-4 py-2 rounded-xl border border-cream/20 self-start"
+              style={{ background: 'rgba(242,237,228,0.10)', backdropFilter: 'blur(8px)' }}
+            >
+              <span className="font-display font-extrabold text-cream text-[22px]">${current.priceUSD}</span>
+              <span className="text-cream/55 text-sm">/ {(current.priceUSD * 2000).toLocaleString()} FC</span>
+              {current.oldPriceUSD && (
+                <span className="text-cream/40 text-sm line-through">${current.oldPriceUSD}</span>
+              )}
+            </div>
+          )}
+
+          {/* Description courte */}
+          {current?.shortDescription && (
+            <p className="text-cream/65 text-sm leading-relaxed max-w-xs mb-5">
+              {current.shortDescription}
+            </p>
+          )}
+
+          {/* Stats — inline dans le flux, entre description et CTA */}
+          <div className="flex items-center gap-5 mb-7">
+            <div>
+              <div className="font-display text-[13px] font-bold text-cream leading-none">
+                {allProductsCount > 0 ? `${allProductsCount}+` : '—'}
+              </div>
+              <div className="font-display text-[9px] tracking-widest uppercase text-cream/45 mt-1">Pièces</div>
+            </div>
+            <div className="w-px h-6 bg-cream/15" />
+            <div>
+              <div className="font-display text-[13px] font-bold text-cream leading-none">24h</div>
+              <div className="font-display text-[9px] tracking-widest uppercase text-cream/45 mt-1">Livraison</div>
+            </div>
+            <div className="w-px h-6 bg-cream/15" />
+            <div>
+              <div className="font-display text-[13px] font-bold text-cream leading-none">USD/FC</div>
+              <div className="font-display text-[9px] tracking-widest uppercase text-cream/45 mt-1">Bi-devise</div>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <Link
+            href={current ? `/produit/${current.slug}` : '/catalogue'}
+            className="self-start inline-flex items-center gap-3 bg-cream text-ink font-display text-[11px] font-bold tracking-[0.2em] uppercase px-7 py-3.5 rounded-full hover:bg-terra hover:text-cream transition-colors duration-200"
+          >
+            Voir le produit →
+          </Link>
         </div>
 
-        {/* Titre grand format */}
-        <h1 className="font-display font-extrabold text-cream leading-[0.88] tracking-tight uppercase mb-5"
-          style={{ fontSize: 'clamp(48px, 7.5vw, 88px)', letterSpacing: '-2px' }}>
-          {current?.name.split(' ').map((word, wi) => (
-            <span key={wi}>
-              {wi === current.name.split(' ').length - 1
-                ? <span className="text-terra">{word}</span>
-                : word}
-              {wi < current.name.split(' ').length - 1 && <br />}
-            </span>
-          ))}
-        </h1>
-
-        {/* Badge prix */}
-        {current && (
-          <div className="inline-flex items-baseline gap-2 mb-5 px-4 py-2 rounded-xl border border-cream/20"
-            style={{ background: 'rgba(242,237,228,0.10)', backdropFilter: 'blur(8px)' }}>
-            <span className="font-display font-extrabold text-cream text-2xl">${current.priceUSD}</span>
-            <span className="text-cream/55 text-sm">/ {(current.priceUSD * 2000).toLocaleString()} FC</span>
-            {current.oldPriceUSD && (
-              <span className="text-cream/40 text-sm line-through">${current.oldPriceUSD}</span>
-            )}
-          </div>
-        )}
-
-        {/* Description courte */}
-        {current?.shortDescription && (
-          <p className="text-cream/65 text-[15px] leading-relaxed max-w-sm mb-7">
-            {current.shortDescription}
-          </p>
-        )}
-
-        {/* CTA */}
-        <Link
-          href={current ? `/produit/${current.slug}` : '/catalogue'}
-          className="inline-flex items-center gap-3 bg-cream text-ink font-display text-[11px] font-bold tracking-[0.2em] uppercase px-7 py-3.5 rounded-full hover:bg-terra hover:text-cream transition-colors duration-200"
-        >
-          Voir le produit →
-        </Link>
+        {/* ── ZONE DROITE (45%) — image uniquement, jamais de texte ── */}
+        <div className="relative overflow-hidden" style={{ zIndex: 3 }}>
+          {current?.images[0] && (
+            <Link
+              href={`/produit/${current.slug}`}
+              className="absolute inset-0 flex items-end justify-center group"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={current.images[0]}
+                alt={current.name}
+                style={{
+                  width: '100%',
+                  height: '88%',
+                  objectFit: 'contain',
+                  objectPosition: 'center bottom',
+                  filter: 'drop-shadow(-20px 0 50px rgba(26,20,16,0.45))',
+                  transform: isTransitioning ? 'translateX(28px) scale(0.97)' : 'translateX(0) scale(1)',
+                  opacity: isTransitioning ? 0 : 1,
+                  transition: 'transform 0.6s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease',
+                }}
+              />
+              {/* Badge hover */}
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                <span className="bg-cream/95 backdrop-blur-sm border border-line rounded-full px-5 py-2 font-display text-[10px] tracking-widest uppercase font-bold text-ink shadow-lg">
+                  Voir le produit →
+                </span>
+              </div>
+            </Link>
+          )}
+        </div>
       </div>
 
-      {/* ── Compteur slide (haut-droite) ── */}
+      {/* ── z-index 5 : Compteur — haut-droite, jamais sur le titre ── */}
       {heroProducts.length > 1 && (
-        <div className="absolute top-20 right-10 z-20 font-display font-bold text-[12px] text-cream/50 tracking-wider hidden lg:block">
+        <div
+          className="absolute hidden lg:block font-display font-bold text-[12px] text-cream/50 tracking-wider"
+          style={{ top: 80, right: 40, zIndex: 5 }}
+        >
           {String(heroIndex + 1).padStart(2, '0')} / {String(heroProducts.length).padStart(2, '0')}
         </div>
       )}
 
-      {/* ── Stats ribbon (haut-gauche) ── */}
-      <div className="absolute top-20 left-8 lg:left-12 z-20 hidden lg:flex items-center gap-8">
-        <HeroStat value={allProductsCount > 0 ? `${allProductsCount}+` : '—'} label="Pièces" />
-        <div className="w-px h-8 bg-cream/15" />
-        <HeroStat value="24h" label="Livraison KIN" />
-        <div className="w-px h-8 bg-cream/15" />
-        <HeroStat value="USD/FC" label="Bi-devise" />
-      </div>
-
-      {/* ── Flèches navigation ── */}
+      {/* ── z-index 5 : Flèches navigation ── */}
       {heroProducts.length > 1 && (
         <>
           <button
             type="button"
             onClick={goPrev}
             aria-label="Précédent"
-            className="absolute left-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full flex items-center justify-center text-cream transition-all hover:bg-terra hover:border-terra"
-            style={{ background: 'rgba(242,237,228,0.10)', border: '1px solid rgba(242,237,228,0.20)', backdropFilter: 'blur(8px)' }}
+            className="absolute top-1/2 -translate-y-1/2 left-5 w-11 h-11 rounded-full flex items-center justify-center text-cream transition-all hover:bg-terra"
+            style={{ zIndex: 5, background: 'rgba(242,237,228,0.10)', border: '1px solid rgba(242,237,228,0.20)', backdropFilter: 'blur(8px)' }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
           </button>
@@ -517,29 +573,29 @@ function HeroCarousel({
             type="button"
             onClick={goNext}
             aria-label="Suivant"
-            className="absolute right-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full flex items-center justify-center text-cream transition-all hover:bg-terra hover:border-terra"
-            style={{ background: 'rgba(242,237,228,0.10)', border: '1px solid rgba(242,237,228,0.20)', backdropFilter: 'blur(8px)' }}
+            className="absolute top-1/2 -translate-y-1/2 right-5 w-11 h-11 rounded-full flex items-center justify-center text-cream transition-all hover:bg-terra"
+            style={{ zIndex: 5, background: 'rgba(242,237,228,0.10)', border: '1px solid rgba(242,237,228,0.20)', backdropFilter: 'blur(8px)' }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
         </>
       )}
 
-      {/* ── Dots ── */}
+      {/* ── z-index 6 : Dots de pagination ── */}
       {heroProducts.length > 1 && (
-        <div className="absolute bottom-7 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+        <div className="absolute bottom-7 left-1/2 -translate-x-1/2 flex items-center gap-2" style={{ zIndex: 6 }}>
           {heroProducts.map((_, i) => (
             <button
               key={i}
               type="button"
               onClick={() => goTo(i)}
               aria-label={`Slide ${i + 1}`}
-              className="transition-all duration-300 rounded-full"
+              className="transition-all duration-300"
               style={{
                 width: i === heroIndex ? 24 : 6,
                 height: 6,
-                background: i === heroIndex ? 'rgba(242,237,228,0.9)' : 'rgba(242,237,228,0.35)',
                 borderRadius: i === heroIndex ? 4 : '50%',
+                background: i === heroIndex ? 'rgba(242,237,228,0.9)' : 'rgba(242,237,228,0.35)',
               }}
             />
           ))}
@@ -547,23 +603,14 @@ function HeroCarousel({
       )}
 
       {/* ── Barre de progression ── */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] z-30" style={{ background: 'rgba(255,255,255,0.10)' }}>
-        <div
-          className="h-full bg-terra"
-          style={{ width: `${progress}%`, transition: 'width 0.1s linear' }}
-        />
+      <div
+        className="absolute bottom-0 left-0 right-0 h-[2px]"
+        style={{ zIndex: 6, background: 'rgba(255,255,255,0.10)' }}
+      >
+        <div className="h-full bg-terra" style={{ width: `${progress}%`, transition: 'width 0.1s linear' }} />
       </div>
 
     </section>
-  );
-}
-
-function HeroStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div>
-      <div className="font-display text-sm font-bold text-cream leading-none">{value}</div>
-      <div className="font-display text-[9px] tracking-widest uppercase text-cream/45 mt-1">{label}</div>
-    </div>
   );
 }
 
