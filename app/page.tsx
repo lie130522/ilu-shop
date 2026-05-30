@@ -8,17 +8,34 @@ import { Marquee } from '@/components/Marquee';
 import { PriceDisplay } from '@/components/PriceDisplay';
 import { RecommendedSection, RecentlyViewedSection } from '@/components/RecommendedSection';
 import { BestSellersSection } from '@/components/BestSellersSection';
+import { subscribeCarousel, type CarouselSlide } from '@/lib/firebase/carousel';
 import type { Product } from '@/lib/types';
 
 export default function HomePage() {
   const allProducts = useAllProducts();
 
+  // ── Carousel géré manuellement depuis Firestore ──────────────────────────
+  const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>([]);
+  useEffect(() => subscribeCarousel(setCarouselSlides), []);
+
   const featured = useMemo(() => allProducts.filter((p) => p.status === 'featured'), [allProducts]);
-  // Produits du carousel — featured en premier, puis les autres (max 6 slides)
+
+  /**
+   * Priorité :
+   * 1. Slides actifs définis manuellement dans /admin/carousel (Firestore)
+   * 2. Fallback → produits "À la une" (rétrocompatibilité si carousel vide)
+   */
   const heroProducts = useMemo(() => {
-    const rest = allProducts.filter((p) => p.status !== 'featured' && p.images[0]);
-    return [...featured, ...rest].filter((p) => p.images[0]).slice(0, 6);
-  }, [allProducts, featured]);
+    const activeSlides = carouselSlides.filter((s) => s.actif);
+    if (activeSlides.length > 0) {
+      // Résoudre chaque slide → produit complet (ignorer si produit introuvable)
+      return activeSlides
+        .map((s) => allProducts.find((p) => p.id === s.productId))
+        .filter((p): p is Product => !!p && p.images.length > 0);
+    }
+    // Fallback : produits "À la une" (aucune limite)
+    return featured.filter((p) => p.images[0]);
+  }, [carouselSlides, allProducts, featured]);
 
   const [heroIndex, setHeroIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);

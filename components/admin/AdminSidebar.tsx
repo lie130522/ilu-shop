@@ -34,6 +34,7 @@ export function AdminSidebar() {
       permission: 'orders',
       badge: unreadOrders,
     },
+    { href: '/admin/carousel', label: 'Carousel Hero', icon: <CarouselIcon />, permission: 'editorial' },
     { href: '/admin/editorial', label: 'Éditorial', icon: <StarIcon />, permission: 'editorial' },
     { href: '/admin/showroom', label: 'Showroom', icon: <ShowroomIcon />, permission: 'showroom' },
     { href: '/admin/taux', label: 'Taux de change', icon: <CoinIcon />, permission: 'exchange_rate' },
@@ -158,6 +159,17 @@ export function AdminSidebar() {
   );
 }
 
+function CarouselIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <path d="M1 9v6M23 9v6" strokeLinecap="round" />
+      <circle cx="12" cy="18.5" r="0.5" fill="currentColor" />
+      <circle cx="9" cy="18.5" r="0.5" fill="currentColor" />
+      <circle cx="15" cy="18.5" r="0.5" fill="currentColor" />
+    </svg>
+  );
+}
 function ShowroomIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
