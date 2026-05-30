@@ -1003,22 +1003,47 @@ export function StepMedias({
     new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const dataUrl = reader.result as string;
+        const rawDataUrl = reader.result as string;
         const img = new Image();
-        img.onload = () =>
+        img.onload = () => {
+          // Normaliser en JPEG ou PNG via canvas pour garantir la compatibilité
+          // avec Remove.bg (qui refuse WebP, AVIF, BMP, etc.)
+          const needsConversion = !['image/jpeg', 'image/jpg', 'image/png'].includes(file.type);
+          let normalizedDataUrl = rawDataUrl;
+
+          if (needsConversion) {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth;
+              canvas.height = img.naturalHeight;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                // Fond blanc pour JPEG (évite le noir sur les zones transparentes)
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                normalizedDataUrl = canvas.toDataURL('image/jpeg', 0.93);
+              }
+            } catch {
+              // Fallback : garder le format original si la conversion échoue
+              normalizedDataUrl = rawDataUrl;
+            }
+          }
+
           resolve({
             id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
             file,
-            originalDataUrl: dataUrl,
-            processedDataUrl: dataUrl,
+            originalDataUrl: normalizedDataUrl,
+            processedDataUrl: normalizedDataUrl,
             hasTransparentBg: false,
             pipelineStatus: 'idle',
             width: img.naturalWidth,
             height: img.naturalHeight,
             sizeBytes: file.size,
           });
+        };
         img.onerror = reject;
-        img.src = dataUrl;
+        img.src = rawDataUrl;
       };
       reader.onerror = reject;
       reader.readAsDataURL(file);
@@ -1376,12 +1401,34 @@ export function StepPipeline({
     );
   };
 
+  /** Convertit un data URL en JPEG via canvas si ce n'est pas déjà JPEG/PNG */
+  const ensureJpegOrPng = (dataUrl: string): Promise<string> =>
+    new Promise((resolve) => {
+      const isCompatible = dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/png');
+      if (isCompatible) { resolve(dataUrl); return; }
+      const el = new Image();
+      el.onload = () => {
+        try {
+          const cv = document.createElement('canvas');
+          cv.width = el.naturalWidth; cv.height = el.naturalHeight;
+          const ctx = cv.getContext('2d');
+          if (!ctx) { resolve(dataUrl); return; }
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, cv.width, cv.height);
+          ctx.drawImage(el, 0, 0);
+          resolve(cv.toDataURL('image/jpeg', 0.93));
+        } catch { resolve(dataUrl); }
+      };
+      el.onerror = () => resolve(dataUrl);
+      el.src = dataUrl;
+    });
+
   const runPipeline = async (imgId: string) => {
     const img = form.images.find((i) => i.id === imgId);
     if (!img || img.pipelineStatus === 'removing_bg') return;
 
-    // Upscaling désactivé (nécessite crédits Replicate payants) — détourage direct
-    const workingDataUrl = img.originalDataUrl;
+    // Normaliser en JPEG/PNG avant envoi à Remove.bg (WebP/AVIF non supportés)
+    const workingDataUrl = await ensureJpegOrPng(img.originalDataUrl);
 
     updateImage(imgId, { pipelineStatus: 'removing_bg' });
     try {
