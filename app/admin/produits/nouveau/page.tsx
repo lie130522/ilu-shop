@@ -331,7 +331,14 @@ export default function NouveauProduitPage() {
       createdAt: now, updatedAt: now,
     };
 
-    saveAdminProduct(product);
+    // Sauvegarder en localStorage SANS heroBgImage (base64 trop volumineux → quota exceeded)
+    // La photo hero est uploadée vers Firebase Storage et récupérée via Firestore
+    try {
+      saveAdminProduct({ ...product, heroBgImage: undefined });
+    } catch (lsErr) {
+      console.warn('[handlePublish] localStorage save failed (quota?):', lsErr);
+      // On continue — Firestore reste la source de vérité
+    }
 
     try {
       await saveProductToFirestore(product);

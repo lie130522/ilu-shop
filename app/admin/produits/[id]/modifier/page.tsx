@@ -236,8 +236,12 @@ export default function ModifierProduitPage() {
       updatedAt: now,
     };
 
-    // 1. Mise à jour localStorage
-    saveAdminProduct(updatedProduct);
+    // 1. Mise à jour localStorage SANS heroBgImage (base64 trop volumineux → quota exceeded)
+    try {
+      saveAdminProduct({ ...updatedProduct, heroBgImage: undefined });
+    } catch (lsErr) {
+      console.warn('[handleSave] localStorage save failed (quota?):', lsErr);
+    }
 
     // 2. Upload images (nouvelles + re-upload des existantes) + mise à jour Firestore
     try {
