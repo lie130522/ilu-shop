@@ -98,6 +98,9 @@ export interface StoredProduct {
   rdcAvailability?: 'confirmed' | 'to_verify' | 'limited';
   descriptionTone?: 'editorial' | 'commercial' | 'luxe' | 'jeune';
 
+  /** Image de fond hero carousel (base64 data URL avant upload, puis URL Storage après) */
+  heroBgImage?: string;
+
   // ── Statut & meta ──
   status: ProductStatus;
   /** Étiquette visible sur la carte produit (Nouveau / Promo / Tendance) */

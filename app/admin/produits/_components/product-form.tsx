@@ -57,6 +57,8 @@ export interface FormState {
   deliveryMode?: 'activation_code' | 'configured_account' | 'direct_recharge';
   rdcAvailability?: 'confirmed' | 'to_verify' | 'limited';
   descriptionTone: 'editorial' | 'commercial' | 'luxe' | 'jeune';
+  /** Base64 data URL de l'image de fond hero (photo lifestyle pleine page) */
+  heroBgImage: string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -1263,6 +1265,86 @@ export function StepMedias({
           </div>
         )}
       </div>
+
+      {/* Image Hero (fond pleine page carousel) */}
+      <HeroBgImageField form={form} set={set} />
+    </div>
+  );
+}
+
+// ── Hero Bg Image Field ───────────────────────────────────────────────────────
+
+function HeroBgImageField({
+  form,
+  set,
+}: {
+  form: FormState;
+  set: <K extends keyof FormState>(k: K, v: FormState[K]) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => set('heroBgImage', reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div>
+      <Label>Image Hero — fond pleine page (optionnel)</Label>
+      <p className="text-xs text-muted mb-3">
+        Photo &quot;lifestyle&quot; ou ambiance utilisée comme fond plein écran dans le carousel de la page d&apos;accueil.
+        Si absente, un dégradé automatique est appliqué selon la catégorie du produit.
+      </p>
+
+      {form.heroBgImage ? (
+        <div className="relative rounded-xl overflow-hidden border border-line group" style={{ aspectRatio: '16/7' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={form.heroBgImage} alt="Hero bg" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-ink/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="px-4 py-2 rounded-full bg-cream text-ink font-display text-[10px] tracking-widest uppercase font-bold"
+            >
+              Changer
+            </button>
+            <button
+              type="button"
+              onClick={() => set('heroBgImage', '')}
+              className="px-4 py-2 rounded-full bg-terra text-cream font-display text-[10px] tracking-widest uppercase font-bold"
+            >
+              Supprimer
+            </button>
+          </div>
+          <div className="absolute top-2 left-2 bg-ink/70 text-cream text-[9px] font-display font-bold tracking-widest uppercase px-2 py-1 rounded">
+            Image Hero
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => inputRef.current?.click()}
+          className="border-2 border-dashed border-line rounded-xl p-8 text-center cursor-pointer hover:border-terra/50 hover:bg-bone/50 transition-colors"
+          style={{ aspectRatio: '16/7' }}
+        >
+          <div className="flex flex-col items-center justify-center h-full gap-2">
+            <div className="text-4xl opacity-40">🖼️</div>
+            <p className="font-display font-semibold text-sm text-ink">
+              Ajouter une image de fond hero
+            </p>
+            <p className="text-xs text-muted">Photo paysage, ambiance, lifestyle — format 16:9 recommandé</p>
+          </div>
+        </div>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+      />
     </div>
   );
 }

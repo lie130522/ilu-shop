@@ -104,7 +104,21 @@ export async function saveProductToFirestore(product: StoredProduct): Promise<vo
     );
   }
 
-  // 3. Build Firestore document (Product-compatible shape)
+  // 3. Upload heroBgImage if present (base64 → Storage)
+  let heroBgImageUrl: string | undefined;
+  if (product.heroBgImage) {
+    try {
+      if (product.heroBgImage.startsWith('http://') || product.heroBgImage.startsWith('https://')) {
+        heroBgImageUrl = product.heroBgImage;
+      } else {
+        heroBgImageUrl = await uploadProductImage(product.id, 'hero-bg', product.heroBgImage);
+      }
+    } catch (err) {
+      console.error('[products] heroBgImage upload failed:', err);
+    }
+  }
+
+  // 4. Build Firestore document (Product-compatible shape)
   const firestoreDoc: Omit<Product, 'id'> & {
     id: string;
     source: 'admin';
@@ -140,6 +154,7 @@ export async function saveProductToFirestore(product: StoredProduct): Promise<vo
     ...(product.deliveryMode         ? { deliveryMode: product.deliveryMode } : {}),
     ...(product.rdcAvailability      ? { rdcAvailability: product.rdcAvailability } : {}),
     ...(product.descriptionTone      ? { descriptionTone: product.descriptionTone } : {}),
+    ...(heroBgImageUrl               ? { heroBgImage: heroBgImageUrl }             : {}),
     rating: product.rating,
     reviewCount: product.reviewCount,
     source: 'admin',

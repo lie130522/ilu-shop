@@ -103,6 +103,7 @@ function productToForm(p: StoredProduct): FormState {
     deliveryMode: p.deliveryMode,
     rdcAvailability: p.rdcAvailability,
     descriptionTone: p.descriptionTone ?? 'editorial',
+    heroBgImage: p.heroBgImage ?? '',
     status: p.status,
     badge: p.badge,
   };
@@ -228,6 +229,7 @@ export default function ModifierProduitPage() {
       deliveryMode: form.deliveryMode,
       rdcAvailability: form.rdcAvailability,
       descriptionTone: form.descriptionTone || undefined,
+      heroBgImage: form.heroBgImage || undefined,
       rating: existingProduct.rating,
       reviewCount: existingProduct.reviewCount,
       createdAt: existingProduct.createdAt,

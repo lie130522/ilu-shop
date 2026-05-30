@@ -37,6 +37,8 @@ export interface Product {
   deliveryMode?: 'activation_code' | 'configured_account' | 'direct_recharge';
   rdcAvailability?: 'confirmed' | 'to_verify' | 'limited';
   descriptionTone?: 'editorial' | 'commercial' | 'luxe' | 'jeune';
+  /** URL de l'image de fond du hero carousel (photo lifestyle pleine page) */
+  heroBgImage?: string;
 }
 
 export interface CartItem {

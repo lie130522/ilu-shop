@@ -61,6 +61,7 @@ const INITIAL: FormState = {
   colorImages: {}, brand: '', material: '', ram: [], connectivity: [],
   genre: undefined, modele: '', platform: '', deliveryMode: undefined,
   rdcAvailability: undefined, descriptionTone: 'editorial',
+  heroBgImage: '',
   status: 'active', badge: undefined,
 };
 
@@ -325,6 +326,7 @@ export default function NouveauProduitPage() {
       deliveryMode: form.deliveryMode,
       rdcAvailability: form.rdcAvailability,
       descriptionTone: form.descriptionTone || undefined,
+      heroBgImage: form.heroBgImage || undefined,
       rating: 0, reviewCount: 0,
       createdAt: now, updatedAt: now,
     };
