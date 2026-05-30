@@ -272,8 +272,52 @@ export function OutfitForm({ initialOutfit }: OutfitFormProps) {
   const imgRef = useRef<HTMLDivElement>(null);
 
   // Préremplissage depuis import photo (OutfitImportModal → sessionStorage)
+  // + restauration après création produit depuis le catalogue
   useEffect(() => {
     if (isEdit) return;
+
+    // 1. Retour depuis création produit — restaurer l'état de l'outfit + auto-lier
+    const returnRaw = sessionStorage.getItem('ilu_outfit_return');
+    if (returnRaw) {
+      sessionStorage.removeItem('ilu_outfit_return');
+      try {
+        const ret = JSON.parse(returnRaw) as {
+          newProductId: string;
+          newProductSlug: string;
+          newProductName: string;
+          newProductImageUrl: string;
+          linkedItemId: string;
+          savedState?: {
+            form: FormState;
+            photos: string[];
+            items: OutfitItem[];
+            dots: OutfitDot[];
+            creationMode: OutfitCreationMode;
+          };
+        };
+        if (ret.savedState) {
+          setForm(ret.savedState.form);
+          setPhotos(ret.savedState.photos);
+          setDots(ret.savedState.dots);
+          setCreationMode(ret.savedState.creationMode);
+          setItems(
+            ret.savedState.items.map((it) =>
+              it.id === ret.linkedItemId
+                ? {
+                    ...it,
+                    productId: ret.newProductId,
+                    productSlug: ret.newProductSlug,
+                    imageUrl: ret.newProductImageUrl || it.imageUrl,
+                  }
+                : it,
+            ),
+          );
+        }
+        return;
+      } catch { /* ignore */ }
+    }
+
+    // 2. Import depuis photo d'outfit (OutfitImportModal)
     const raw = sessionStorage.getItem('ilu_outfit_import');
     if (!raw) return;
     try {
@@ -957,6 +1001,14 @@ export function OutfitForm({ initialOutfit }: OutfitFormProps) {
             }
             onUnlink={() => unlinkItem(linkingItemId)}
             onClose={() => setLinkingItemId(null)}
+            outfitContext={{
+              itemId: linkingItemId,
+              itemName: item.name,
+              itemCategory: item.category,
+              itemPriceUSD: item.priceUSD,
+              outfitPhoto: photos[0] ?? null,
+              outfitState: { form, photos, items, dots, creationMode },
+            }}
           />
         );
       })()}

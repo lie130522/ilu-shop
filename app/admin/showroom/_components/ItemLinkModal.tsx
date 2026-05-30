@@ -7,18 +7,28 @@ import { getAdminProducts } from '@/lib/admin/product-store';
 import type { Product } from '@/lib/types';
 import type { OutfitItem } from '@/lib/showroom/types';
 
+interface OutfitContextForCreation {
+  itemId: string;
+  itemName: string;
+  itemCategory: string;
+  itemPriceUSD: number;
+  outfitPhoto: string | null;
+  outfitState: unknown;
+}
+
 interface ItemLinkModalProps {
   item: OutfitItem;
   onLink: (productId: string, productSlug: string, imageUrl: string) => void;
   onUnlink: () => void;
   onClose: () => void;
+  /** Contexte outfit pour créer le produit et revenir automatiquement */
+  outfitContext?: OutfitContextForCreation;
 }
 
-export function ItemLinkModal({ item, onLink, onUnlink, onClose }: ItemLinkModalProps) {
+export function ItemLinkModal({ item, onLink, onUnlink, onClose, outfitContext }: ItemLinkModalProps) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [firestoreProducts, setFirestoreProducts] = useState<Product[]>([]);
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     return subscribeFirestoreProducts(setFirestoreProducts);
@@ -55,24 +65,11 @@ export function ItemLinkModal({ item, onLink, onUnlink, onClose }: ItemLinkModal
     onClose();
   };
 
-  const handleCreateInCatalogue = async () => {
-    setCreating(true);
-    try {
-      const res = await fetch('/api/admin/imports/describe-item', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: item.name,
-          category: item.category,
-          priceUSD: item.priceUSD,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json() as Record<string, unknown>;
-        sessionStorage.setItem('ilu_product_prefill', JSON.stringify(data));
-      }
-    } catch { /* procède sans préfill si l'appel échoue */ }
-    router.push('/admin/produits/nouveau');
+  const saveContextAndNavigate = (mode: 'manual' | 'gemini') => {
+    if (outfitContext) {
+      sessionStorage.setItem('ilu_outfit_context', JSON.stringify(outfitContext));
+    }
+    router.push(`/admin/produits/nouveau?from=outfit&mode=${mode}`);
     onClose();
   };
 
@@ -180,26 +177,28 @@ export function ItemLinkModal({ item, onLink, onUnlink, onClose }: ItemLinkModal
         </div>
 
         {/* Footer — créer dans le catalogue */}
-        <div className="p-4 border-t border-line space-y-1.5">
-          <button
-            type="button"
-            onClick={handleCreateInCatalogue}
-            disabled={creating}
-            className="w-full py-2.5 rounded-xl bg-ink text-cream font-display text-[10px] tracking-widest uppercase font-bold hover:bg-terra disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-          >
-            {creating ? (
-              <>
-                <span className="w-3 h-3 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
-                Gemini remplit la fiche…
-              </>
-            ) : (
-              '✨ Créer ce produit dans le catalogue'
-            )}
-          </button>
+        <div className="p-4 border-t border-line space-y-2">
+          <p className="text-[10px] font-display font-semibold tracking-widest uppercase text-muted text-center mb-1">
+            Créer dans le catalogue
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => saveContextAndNavigate('manual')}
+              className="py-2.5 rounded-xl border-2 border-line text-ink font-display text-[10px] tracking-widest uppercase font-bold hover:border-ink transition-colors flex items-center justify-center gap-1.5"
+            >
+              📝 Manuellement
+            </button>
+            <button
+              type="button"
+              onClick={() => saveContextAndNavigate('gemini')}
+              className="py-2.5 rounded-xl bg-ink text-cream font-display text-[10px] tracking-widest uppercase font-bold hover:bg-terra transition-colors flex items-center justify-center gap-1.5"
+            >
+              ✨ Avec Gemini
+            </button>
+          </div>
           <p className="text-[10px] text-muted text-center">
-            {creating
-              ? 'Génération en cours, patientez…'
-              : 'Gemini pré-remplira automatiquement toutes les informations'}
+            Après création, vous serez redirigé ici automatiquement
           </p>
         </div>
       </div>
