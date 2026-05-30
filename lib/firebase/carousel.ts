@@ -1,119 +1,125 @@
-// ─── ILU SHOP — Carousel Firestore ───────────────────────────────────────────
-// Collection : "carousel"
-// Un document par slide. Les slides sont liés à un produit existant du catalogue.
+// ─── ILU SHOP — Multi-carousels Firestore ────────────────────────────────────
+// Collection : "carousels"
+// Un document = un carousel nommé avec sa liste de produits.
+// Un seul carousel peut être actif à la fois sur la page d'accueil.
 
 import {
   collection,
   doc,
-  getDocs,
   setDoc,
   deleteDoc,
   onSnapshot,
   query,
   orderBy,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface CarouselSlide {
+export interface Carousel {
   id: string;
-  productId: string;
-  ordre: number;
+  name: string;
+  description: string;
   actif: boolean;
+  /** IDs des produits dans l'ordre d'affichage (max MAX_CAROUSEL_PRODUCTS) */
+  productIds: string[];
   createdAt: string;
 }
 
+export const MAX_CAROUSEL_PRODUCTS = 15;
+
 // ── Lecture temps réel ────────────────────────────────────────────────────────
 
-/**
- * Subscribe to the carousel collection (ordered by `ordre`).
- * Returns unsubscribe function.
- */
-export function subscribeCarousel(
-  callback: (slides: CarouselSlide[]) => void,
+export function subscribeCarousels(
+  callback: (carousels: Carousel[]) => void,
 ): () => void {
-  const q = query(collection(db, 'carousel'), orderBy('ordre', 'asc'));
+  const q = query(collection(db, 'carousels'), orderBy('createdAt', 'asc'));
   return onSnapshot(q, (snap) => {
-    const slides: CarouselSlide[] = snap.docs.map((d) => ({
-      ...(d.data() as Omit<CarouselSlide, 'id'>),
-      id: d.id,
-    }));
-    callback(slides);
+    callback(
+      snap.docs.map((d) => ({
+        ...(d.data() as Omit<Carousel, 'id'>),
+        id: d.id,
+      })),
+    );
   });
 }
 
-/**
- * One-shot fetch of active carousel slides (for homepage SSR/CSR).
- */
-export async function getActiveCarouselSlides(): Promise<CarouselSlide[]> {
-  const q = query(collection(db, 'carousel'), orderBy('ordre', 'asc'));
-  const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => ({ ...(d.data() as Omit<CarouselSlide, 'id'>), id: d.id }))
-    .filter((s) => s.actif);
-}
+// ── Création ──────────────────────────────────────────────────────────────────
 
-// ── Écriture ──────────────────────────────────────────────────────────────────
-
-/**
- * Add a product to the carousel (at the end).
- */
-export async function addSlideToCarousel(
-  productId: string,
-  currentSlides: CarouselSlide[],
-): Promise<void> {
-  const maxOrdre = currentSlides.reduce((m, s) => Math.max(m, s.ordre), 0);
-  const id = `slide-${Date.now()}`;
-  await setDoc(doc(db, 'carousel', id), {
-    productId,
-    ordre: maxOrdre + 1,
-    actif: true,
+export async function createCarousel(
+  name: string,
+  description: string,
+): Promise<string> {
+  const id = `carousel-${Date.now()}`;
+  await setDoc(doc(db, 'carousels', id), {
+    name: name.trim(),
+    description: description.trim(),
+    actif: false,
+    productIds: [],
     createdAt: new Date().toISOString(),
     updatedAt: serverTimestamp(),
   });
+  return id;
 }
 
-/**
- * Toggle actif status of a slide.
- */
-export async function toggleSlideActif(
-  slide: CarouselSlide,
+// ── Activation (désactive tous les autres) ────────────────────────────────────
+
+export async function activateCarousel(
+  carouselId: string,
+  allCarousels: Carousel[],
 ): Promise<void> {
+  const batch = writeBatch(db);
+  for (const c of allCarousels) {
+    batch.set(
+      doc(db, 'carousels', c.id),
+      { actif: c.id === carouselId, updatedAt: serverTimestamp() },
+      { merge: true },
+    );
+  }
+  await batch.commit();
+}
+
+// ── Désactivation ─────────────────────────────────────────────────────────────
+
+export async function deactivateCarousel(carouselId: string): Promise<void> {
   await setDoc(
-    doc(db, 'carousel', slide.id),
-    { actif: !slide.actif, updatedAt: serverTimestamp() },
+    doc(db, 'carousels', carouselId),
+    { actif: false, updatedAt: serverTimestamp() },
     { merge: true },
   );
 }
 
-/**
- * Move a slide up or down by swapping `ordre` values with its neighbour.
- */
-export async function moveSlide(
-  slides: CarouselSlide[],
-  slideId: string,
-  direction: 'up' | 'down',
+// ── Mise à jour des produits ──────────────────────────────────────────────────
+
+export async function updateCarouselProducts(
+  carouselId: string,
+  productIds: string[],
 ): Promise<void> {
-  const idx = slides.findIndex((s) => s.id === slideId);
-  if (idx < 0) return;
-  const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-  if (targetIdx < 0 || targetIdx >= slides.length) return;
-
-  const a = slides[idx];
-  const b = slides[targetIdx];
-
-  // Swap ordre values
-  await Promise.all([
-    setDoc(doc(db, 'carousel', a.id), { ordre: b.ordre, updatedAt: serverTimestamp() }, { merge: true }),
-    setDoc(doc(db, 'carousel', b.id), { ordre: a.ordre, updatedAt: serverTimestamp() }, { merge: true }),
-  ]);
+  await setDoc(
+    doc(db, 'carousels', carouselId),
+    { productIds, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
 }
 
-/**
- * Remove a slide from the carousel (does not delete the product).
- */
-export async function removeSlide(slideId: string): Promise<void> {
-  await deleteDoc(doc(db, 'carousel', slideId));
+// ── Mise à jour du nom / description ─────────────────────────────────────────
+
+export async function updateCarouselMeta(
+  carouselId: string,
+  name: string,
+  description: string,
+): Promise<void> {
+  await setDoc(
+    doc(db, 'carousels', carouselId),
+    { name: name.trim(), description: description.trim(), updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
+// ── Suppression ───────────────────────────────────────────────────────────────
+
+export async function deleteCarousel(carouselId: string): Promise<void> {
+  await deleteDoc(doc(db, 'carousels', carouselId));
 }

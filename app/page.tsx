@@ -8,34 +8,32 @@ import { Marquee } from '@/components/Marquee';
 import { PriceDisplay } from '@/components/PriceDisplay';
 import { RecommendedSection, RecentlyViewedSection } from '@/components/RecommendedSection';
 import { BestSellersSection } from '@/components/BestSellersSection';
-import { subscribeCarousel, type CarouselSlide } from '@/lib/firebase/carousel';
+import { subscribeCarousels, type Carousel } from '@/lib/firebase/carousel';
 import type { Product } from '@/lib/types';
 
 export default function HomePage() {
   const allProducts = useAllProducts();
 
-  // ── Carousel géré manuellement depuis Firestore ──────────────────────────
-  const [carouselSlides, setCarouselSlides] = useState<CarouselSlide[]>([]);
-  useEffect(() => subscribeCarousel(setCarouselSlides), []);
+  // ── Multi-carousels Firestore ────────────────────────────────────────────
+  const [carousels, setCarousels] = useState<Carousel[]>([]);
+  useEffect(() => subscribeCarousels(setCarousels), []);
 
   const featured = useMemo(() => allProducts.filter((p) => p.status === 'featured'), [allProducts]);
 
   /**
    * Priorité :
-   * 1. Slides actifs définis manuellement dans /admin/carousel (Firestore)
-   * 2. Fallback → produits "À la une" (rétrocompatibilité si carousel vide)
+   * 1. Carousel actif défini dans /admin/carousel (Firestore)
+   * 2. Fallback → produits "À la une" si aucun carousel actif
    */
   const heroProducts = useMemo(() => {
-    const activeSlides = carouselSlides.filter((s) => s.actif);
-    if (activeSlides.length > 0) {
-      // Résoudre chaque slide → produit complet (ignorer si produit introuvable)
-      return activeSlides
-        .map((s) => allProducts.find((p) => p.id === s.productId))
+    const active = carousels.find((c) => c.actif);
+    if (active && active.productIds.length > 0) {
+      return active.productIds
+        .map((pid) => allProducts.find((p) => p.id === pid))
         .filter((p): p is Product => !!p && p.images.length > 0);
     }
-    // Fallback : produits "À la une" (aucune limite)
     return featured.filter((p) => p.images[0]);
-  }, [carouselSlides, allProducts, featured]);
+  }, [carousels, allProducts, featured]);
 
   const [heroIndex, setHeroIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
