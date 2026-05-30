@@ -18,6 +18,7 @@ export function ItemLinkModal({ item, onLink, onUnlink, onClose }: ItemLinkModal
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [firestoreProducts, setFirestoreProducts] = useState<Product[]>([]);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     return subscribeFirestoreProducts(setFirestoreProducts);
@@ -54,13 +55,24 @@ export function ItemLinkModal({ item, onLink, onUnlink, onClose }: ItemLinkModal
     onClose();
   };
 
-  const handleCreateInCatalogue = () => {
-    const params = new URLSearchParams({
-      ...(item.name ? { name: item.name } : {}),
-      ...(item.priceUSD ? { price: String(item.priceUSD) } : {}),
-      ...(item.category ? { outfitCategory: item.category } : {}),
-    });
-    router.push(`/admin/produits/nouveau?${params.toString()}`);
+  const handleCreateInCatalogue = async () => {
+    setCreating(true);
+    try {
+      const res = await fetch('/api/admin/imports/describe-item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: item.name,
+          category: item.category,
+          priceUSD: item.priceUSD,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json() as Record<string, unknown>;
+        sessionStorage.setItem('ilu_product_prefill', JSON.stringify(data));
+      }
+    } catch { /* procède sans préfill si l'appel échoue */ }
+    router.push('/admin/produits/nouveau');
     onClose();
   };
 
@@ -172,12 +184,22 @@ export function ItemLinkModal({ item, onLink, onUnlink, onClose }: ItemLinkModal
           <button
             type="button"
             onClick={handleCreateInCatalogue}
-            className="w-full py-2.5 rounded-xl bg-ink text-cream font-display text-[10px] tracking-widest uppercase font-bold hover:bg-terra transition-colors flex items-center justify-center gap-2"
+            disabled={creating}
+            className="w-full py-2.5 rounded-xl bg-ink text-cream font-display text-[10px] tracking-widest uppercase font-bold hover:bg-terra disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
-            ✨ Créer ce produit dans le catalogue
+            {creating ? (
+              <>
+                <span className="w-3 h-3 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+                Gemini remplit la fiche…
+              </>
+            ) : (
+              '✨ Créer ce produit dans le catalogue'
+            )}
           </button>
           <p className="text-[10px] text-muted text-center">
-            Le formulaire sera prérempli avec le nom et le prix de cet article
+            {creating
+              ? 'Génération en cours, patientez…'
+              : 'Gemini pré-remplira automatiquement toutes les informations'}
           </p>
         </div>
       </div>

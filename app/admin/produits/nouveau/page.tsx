@@ -76,6 +76,31 @@ export default function NouveauProduitPage() {
   const [publishError, setPublishError] = useState('');
 
   useEffect(() => {
+    // Préfill depuis Gemini (via sessionStorage — ItemLinkModal ou OutfitImportModal)
+    const raw = sessionStorage.getItem('ilu_product_prefill');
+    if (raw) {
+      sessionStorage.removeItem('ilu_product_prefill');
+      try {
+        const data = JSON.parse(raw) as Record<string, unknown>;
+        const validCats = ['mode', 'technologie', 'hybrides', 'services'];
+        const validGenres = ['femme', 'homme', 'mixte', 'enfant'];
+        setForm((f) => ({
+          ...f,
+          ...(typeof data.name === 'string' && data.name         ? { name: data.name }                                  : {}),
+          ...(validCats.includes(data.category as string)        ? { category: data.category as FormState['category'] } : {}),
+          ...(typeof data.subcategory === 'string'               ? { subcategory: data.subcategory }                    : {}),
+          ...(typeof data.shortDescription === 'string'          ? { shortDescription: data.shortDescription }          : {}),
+          ...(typeof data.description === 'string'               ? { description: data.description }                    : {}),
+          ...(Array.isArray(data.tags)                           ? { tags: (data.tags as string[]) }                    : {}),
+          ...(validGenres.includes(data.genre as string)         ? { genre: data.genre as FormState['genre'] }          : {}),
+          ...(typeof data.material === 'string' && data.material ? { material: data.material }                          : {}),
+          ...(typeof data.priceUSD === 'number' && data.priceUSD ? { priceUSD: String(data.priceUSD) }                  : {}),
+        }));
+        return; // préfill sessionStorage a priorité — on ignore les URL params
+      } catch { /* ignore */ }
+    }
+
+    // Fallback : URL params (outfitCategory uniquement pour les anciens liens)
     const params = new URLSearchParams(window.location.search);
     const name = params.get('name');
     const price = params.get('price');
