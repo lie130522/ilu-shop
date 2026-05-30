@@ -51,10 +51,10 @@ export default function HomePage() {
   const goPrev = () => goTo((heroIndex - 1 + heroProducts.length) % heroProducts.length);
   const goNext = useCallback(() => goTo((heroIndex + 1) % heroProducts.length), [heroIndex, heroProducts.length, goTo]);
 
-  // Auto-avance toutes les 4 secondes
+  // Auto-avance toutes les 6 secondes
   useEffect(() => {
     if (heroProducts.length <= 1) return;
-    const t = setInterval(goNext, 4000);
+    const t = setInterval(goNext, 6000);
     return () => clearInterval(t);
   }, [heroProducts.length, goNext]);
 
@@ -378,7 +378,7 @@ function HeroCarousel({
   useEffect(() => {
     setProgress(0);
     const start = Date.now();
-    const duration = 4000;
+    const duration = 6000;
     const raf = requestAnimationFrame(function tick() {
       const elapsed = Date.now() - start;
       setProgress(Math.min((elapsed / duration) * 100, 100));
