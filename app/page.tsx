@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAllProducts } from '@/lib/hooks/useAllProducts';
 import { ProductCard } from '@/components/ProductCard';
 import { Marquee } from '@/components/Marquee';
@@ -14,8 +14,36 @@ export default function HomePage() {
   const allProducts = useAllProducts();
 
   const featured = useMemo(() => allProducts.filter((p) => p.status === 'featured'), [allProducts]);
-  const heroProduct = featured[0] ?? allProducts[0];
   const newArrivals = useMemo(() => allProducts.filter((p) => p.badge === 'new').slice(0, 3), [allProducts]);
+
+  // Produits du carousel — featured en premier, puis les autres (max 6 slides)
+  const heroProducts = useMemo(() => {
+    const rest = allProducts.filter((p) => p.status !== 'featured' && p.images[0]);
+    return [...featured, ...rest].filter((p) => p.images[0]).slice(0, 6);
+  }, [allProducts, featured]);
+
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const goTo = useCallback((idx: number) => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setHeroIndex(idx);
+      setIsTransitioning(false);
+    }, 150);
+  }, []);
+
+  const goPrev = () => goTo((heroIndex - 1 + heroProducts.length) % heroProducts.length);
+  const goNext = useCallback(() => goTo((heroIndex + 1) % heroProducts.length), [heroIndex, heroProducts.length, goTo]);
+
+  // Auto-avance toutes les 4 secondes
+  useEffect(() => {
+    if (heroProducts.length <= 1) return;
+    const t = setInterval(goNext, 4000);
+    return () => clearInterval(t);
+  }, [heroProducts.length, goNext]);
+
+  const currentHero = heroProducts[heroIndex] ?? null;
 
   // Comptes par catégorie calculés dynamiquement
   const catCounts = useMemo(() => ({
@@ -83,7 +111,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right visual */}
+            {/* Right visual — Carousel */}
             <div className="lg:col-span-7 relative h-[500px] lg:h-[680px] flex items-center justify-center">
               {/* Circular terracotta background */}
               <div className="absolute inset-0 flex items-center justify-center">
@@ -91,7 +119,7 @@ export default function HomePage() {
               </div>
 
               {/* Floating accent labels */}
-              <div className="absolute top-6 right-4 lg:right-12 text-right">
+              <div className="absolute top-6 right-4 lg:right-12 text-right z-10">
                 <div className="font-display text-[10px] tracking-[0.3em] uppercase text-muted">
                   Next SS Preview
                 </div>
@@ -103,14 +131,27 @@ export default function HomePage() {
                 <div className="font-display text-sm font-semibold text-ink">Mode & Tech</div>
               </div>
 
-              {/* Hero product image */}
-              {heroProduct?.images[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={heroProduct.images[0]}
-                  alt={heroProduct.name}
-                  className="relative z-10 max-h-[560px] lg:max-h-[680px] w-auto object-contain drop-shadow-2xl animate-float"
-                />
+              {/* Image carousel — cliquable */}
+              {currentHero?.images[0] ? (
+                <Link
+                  href={`/produit/${currentHero.slug}`}
+                  className="relative z-10 flex items-center justify-center group"
+                  style={{ transition: 'opacity 0.15s ease', opacity: isTransitioning ? 0 : 1 }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    key={heroIndex}
+                    src={currentHero.images[0]}
+                    alt={currentHero.name}
+                    className="max-h-[480px] lg:max-h-[620px] w-auto object-contain drop-shadow-2xl animate-float"
+                  />
+                  {/* Overlay hover */}
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pb-2">
+                    <span className="bg-cream/95 backdrop-blur-sm border border-line rounded-full px-5 py-2 font-display text-[10px] tracking-widest uppercase font-bold text-ink shadow-lg flex items-center gap-2">
+                      Voir le produit →
+                    </span>
+                  </div>
+                </Link>
               ) : (
                 <div className="relative z-10 flex flex-col items-center gap-3 text-cream/60">
                   <span className="font-display text-6xl">✦</span>
@@ -118,19 +159,26 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Floating new arrivals cards — uniquement si produits disponibles */}
-              {newArrivals[0] && (
-                <div className="absolute top-1/3 -left-2 lg:left-10 z-20 bg-cream border border-line rounded-md shadow-xl p-3 flex items-center gap-3 max-w-[200px] animate-fadeUp">
+              {/* Badge produit actuel */}
+              {currentHero && (
+                <div
+                  className="absolute bottom-16 left-4 lg:left-10 z-20 bg-cream border border-line rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 max-w-[220px]"
+                  style={{ transition: 'opacity 0.15s ease', opacity: isTransitioning ? 0 : 1 }}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={newArrivals[0].images[0]} alt="" className="w-14 h-14 object-cover rounded-sm" />
-                  <div>
-                    <div className="font-display text-[9px] tracking-widest uppercase text-terra font-semibold">New Arrival</div>
-                    <div className="font-display text-xs font-semibold leading-tight">{newArrivals[0].name}</div>
+                  <img src={currentHero.images[0]} alt="" className="w-12 h-12 object-cover rounded-lg shrink-0 border border-line" />
+                  <div className="min-w-0">
+                    <div className="font-display text-[9px] tracking-widest uppercase text-terra font-semibold">
+                      {currentHero.badge === 'new' ? 'New Arrival' : currentHero.status === 'featured' ? 'À la une' : 'Sélection'}
+                    </div>
+                    <div className="font-display text-xs font-semibold leading-tight text-ink truncate">{currentHero.name}</div>
+                    <div className="font-display text-[11px] font-bold text-terra mt-0.5">${currentHero.priceUSD}</div>
                   </div>
                 </div>
               )}
 
-              {newArrivals[1] && (
+              {/* Floating new arrival (2e produit) */}
+              {newArrivals[1] && newArrivals[1].id !== currentHero?.id && (
                 <div className="absolute bottom-12 right-0 lg:right-6 z-20 bg-cream border border-line rounded-md shadow-xl p-3 flex items-center gap-3 max-w-[200px] animate-fadeUp" style={{ animationDelay: '200ms' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={newArrivals[1].images[0]} alt="" className="w-14 h-14 object-cover rounded-sm" />
@@ -138,6 +186,47 @@ export default function HomePage() {
                     <div className="font-display text-[9px] tracking-widest uppercase text-terra font-semibold">Featured</div>
                     <div className="font-display text-xs font-semibold leading-tight">{newArrivals[1].name}</div>
                   </div>
+                </div>
+              )}
+
+              {/* Flèches navigation */}
+              {heroProducts.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    aria-label="Précédent"
+                    className="absolute left-0 lg:-left-4 z-30 w-10 h-10 rounded-full bg-cream border border-line shadow-md flex items-center justify-center text-ink hover:bg-terra hover:text-cream hover:border-terra transition-all"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    aria-label="Suivant"
+                    className="absolute right-0 lg:-right-4 z-30 w-10 h-10 rounded-full bg-cream border border-line shadow-md flex items-center justify-center text-ink hover:bg-terra hover:text-cream hover:border-terra transition-all"
+                  >
+                    →
+                  </button>
+                </>
+              )}
+
+              {/* Dots */}
+              {heroProducts.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+                  {heroProducts.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => goTo(i)}
+                      aria-label={`Slide ${i + 1}`}
+                      className={`transition-all duration-300 rounded-full ${
+                        i === heroIndex
+                          ? 'w-6 h-2 bg-terra'
+                          : 'w-2 h-2 bg-ink/25 hover:bg-ink/50'
+                      }`}
+                    />
+                  ))}
                 </div>
               )}
             </div>
