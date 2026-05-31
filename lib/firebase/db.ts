@@ -7,6 +7,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   collection,
   addDoc,
   getDocs,
@@ -18,6 +19,7 @@ import {
   arrayUnion,
   arrayRemove,
   onSnapshot,
+  writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './client';
@@ -179,4 +181,33 @@ export async function getUserBehavior(uid: string, n = 50): Promise<BehaviorEven
     const snap = await getDocs(q);
     return snap.docs.map((d) => d.data() as BehaviorEvent);
   } catch { return []; }
+}
+
+/**
+ * Supprime tous les événements comportementaux d'un utilisateur.
+ * Récursif si plus de 500 documents (limite batch Firestore).
+ */
+export async function deleteUserBehavior(uid: string): Promise<void> {
+  try {
+    const q = query(collection(db, 'users', uid, 'behavior'), limit(500));
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    // S'il reste des documents, on recommence
+    if (snap.docs.length === 500) await deleteUserBehavior(uid);
+  } catch { /* non-bloquant */ }
+}
+
+/**
+ * Supprime le document profil d'un utilisateur
+ * (utilisé lors d'une demande de suppression de compte).
+ */
+export async function deleteUserData(uid: string): Promise<void> {
+  try {
+    await deleteUserBehavior(uid);
+    await deleteDoc(doc(db, 'users', uid, 'data', 'profile'));
+    await deleteDoc(doc(db, 'users', uid, 'data', 'wishlist'));
+  } catch { /* non-bloquant */ }
 }

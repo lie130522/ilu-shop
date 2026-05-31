@@ -7,10 +7,11 @@ import { useAuth } from '@/components/AuthProvider';
 import { useShop } from '@/components/ShopProvider';
 import { useAllProducts } from '@/lib/hooks/useAllProducts';
 import { formatUSD } from '@/lib/currency';
-import { getUserOrders, getUserProfile, setUserProfile } from '@/lib/firebase/db';
+import { getUserOrders, getUserProfile, setUserProfile, deleteUserBehavior } from '@/lib/firebase/db';
 import type { ClientOrder, UserProfile } from '@/lib/firebase/db';
+import { getRecentlyViewed } from '@/lib/tracking';
 
-type Tab = 'dashboard' | 'commandes' | 'wishlist' | 'profil';
+type Tab = 'dashboard' | 'commandes' | 'wishlist' | 'profil' | 'confidentialite';
 
 // P15 — Aligné sur OrderStatus de lib/admin/types
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -35,12 +36,23 @@ export default function ComptePage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [deletingBehavior, setDeletingBehavior] = useState(false);
+  const [behaviorDeleted, setBehaviorDeleted] = useState(false);
+  const [consentLevel, setConsentLevel] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/connexion');
   }, [user, loading, router]);
 
   // Load orders + profile when tab changes
+  // Load cookie consent level on tab change
+  useEffect(() => {
+    if (tab === 'confidentialite') {
+      setConsentLevel(localStorage.getItem('ilu_cookie_consent'));
+      setBehaviorDeleted(false);
+    }
+  }, [tab]);
+
   useEffect(() => {
     if (!user) return;
     if (tab === 'commandes' || tab === 'dashboard') {
@@ -80,6 +92,25 @@ export default function ComptePage() {
     router.push('/');
   };
 
+  const handleDeleteBehavior = async () => {
+    if (!user) return;
+    if (!confirm('Supprimer tout ton historique de navigation et de comportement sur ILU SHOP ?')) return;
+    setDeletingBehavior(true);
+    try {
+      await deleteUserBehavior(user.uid);
+      // Clear localStorage tracking data
+      localStorage.removeItem('ilu_recently_viewed');
+      setBehaviorDeleted(true);
+    } finally {
+      setDeletingBehavior(false);
+    }
+  };
+
+  const handleRevokeCookieConsent = () => {
+    localStorage.removeItem('ilu_cookie_consent');
+    setConsentLevel(null);
+  };
+
   const handleSaveProfile = async () => {
     if (!user) return;
     setProfileSaving(true);
@@ -94,6 +125,7 @@ export default function ComptePage() {
     { key: 'commandes', label: 'Mes commandes', icon: '📦' },
     { key: 'wishlist', label: 'Ma wishlist', icon: '♡' },
     { key: 'profil', label: 'Mon profil', icon: '👤' },
+    { key: 'confidentialite', label: 'Confidentialité', icon: '🔒' },
   ];
 
   return (
@@ -422,11 +454,103 @@ export default function ComptePage() {
                 </div>
               </div>
 
-              {/* Données & vie privée */}
-              <div className="mt-5 bg-cream border border-line rounded-xl p-6">
-                <h3 className="font-display font-semibold text-sm text-ink mb-2">Vie privée</h3>
+            </div>
+          )}
+
+          {/* ── Confidentialité ── */}
+          {tab === 'confidentialite' && (
+            <div className="space-y-5">
+              <h2 className="font-display font-bold text-xl text-ink">Confidentialité</h2>
+
+              {/* Consentement cookies */}
+              <div className="bg-cream border border-line rounded-xl p-6">
+                <h3 className="font-display font-semibold text-sm text-ink mb-3">Cookies & suivi</h3>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-light text-muted leading-relaxed">
+                      {consentLevel === 'all'
+                        ? 'Tu as accepté tous les cookies. Tes visites et interactions sont enregistrées pour les recommandations.'
+                        : 'Tu n\'as accepté que les cookies essentiels. Aucune donnée comportementale n\'est enregistrée.'}
+                    </p>
+                    <span className={`inline-block mt-2 text-[10px] font-display font-bold tracking-widest uppercase px-2 py-0.5 rounded border ${
+                      consentLevel === 'all'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-bone text-muted border-line'
+                    }`}>
+                      {consentLevel === 'all' ? 'Tracking activé' : 'Cookies essentiels seulement'}
+                    </span>
+                  </div>
+                  {consentLevel === 'all' && (
+                    <button
+                      type="button"
+                      onClick={handleRevokeCookieConsent}
+                      className="shrink-0 h-9 px-4 rounded-full border border-line bg-bone hover:bg-terra hover:text-cream hover:border-terra text-sm font-display font-semibold tracking-widest uppercase text-muted transition-colors text-[10px]"
+                    >
+                      Révoquer
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Historique comportemental */}
+              <div className="bg-cream border border-line rounded-xl p-6">
+                <h3 className="font-display font-semibold text-sm text-ink mb-1">Historique de navigation</h3>
+                <p className="text-xs text-muted font-light leading-relaxed mb-4">
+                  Produits consultés, ajouts au panier, wishlist — ces données alimentent tes recommandations personnalisées.
+                  Tu peux les supprimer définitivement à tout moment.
+                </p>
+
+                {behaviorDeleted ? (
+                  <div className="flex items-center gap-2 text-emerald-600 text-sm font-display font-medium">
+                    <span>✓</span>
+                    <span>Historique supprimé avec succès.</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleDeleteBehavior}
+                    disabled={deletingBehavior}
+                    className="h-10 px-6 rounded-full border border-terra/40 bg-terra/5 hover:bg-terra hover:text-cream text-terra font-display text-[11px] font-bold tracking-widest uppercase transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {deletingBehavior ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-current/40 border-t-current rounded-full animate-spin" />
+                        Suppression…
+                      </>
+                    ) : 'Supprimer mon historique'}
+                  </button>
+                )}
+              </div>
+
+              {/* Produits récemment vus (localStorage) */}
+              <div className="bg-cream border border-line rounded-xl p-6">
+                <h3 className="font-display font-semibold text-sm text-ink mb-1">Produits récemment vus</h3>
+                <p className="text-xs text-muted font-light leading-relaxed mb-4">
+                  Stockés localement sur ton appareil (pas sur nos serveurs).{' '}
+                  {getRecentlyViewed().length > 0
+                    ? `${getRecentlyViewed().length} produit${getRecentlyViewed().length > 1 ? 's' : ''} en mémoire.`
+                    : 'Aucun produit mémorisé.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.removeItem('ilu_recently_viewed');
+                    // Force re-render
+                    setConsentLevel(localStorage.getItem('ilu_cookie_consent'));
+                  }}
+                  className="h-9 px-5 rounded-full border border-line bg-bone hover:bg-terra hover:text-cream hover:border-terra text-muted font-display text-[10px] font-bold tracking-widest uppercase transition-colors"
+                >
+                  Effacer l&apos;historique local
+                </button>
+              </div>
+
+              {/* Contact DPO */}
+              <div className="bg-bone border border-line rounded-xl p-5">
                 <p className="text-xs text-muted font-light leading-relaxed">
-                  Tes données comportementales (produits consultés, wishlist) nous aident à te proposer des recommandations personnalisées. Tu peux demander leur suppression à tout moment via <a href="mailto:privacy@ilushop.cd" className="underline hover:text-terra">privacy@ilushop.cd</a>.
+                  Pour toute demande relative à tes données personnelles (accès, rectification, portabilité, opposition), contacte-nous :{' '}
+                  <a href="mailto:privacy@ilushop.cd" className="font-semibold text-terra hover:underline">
+                    privacy@ilushop.cd
+                  </a>
                 </p>
               </div>
             </div>

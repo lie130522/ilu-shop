@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useAllProducts } from '@/lib/hooks/useAllProducts';
 import { ProductCard } from '@/components/ProductCard';
 import { Marquee } from '@/components/Marquee';
@@ -371,6 +371,21 @@ function HeroCarousel({
   const current = heroProducts[heroIndex] ?? null;
   const [l1, l2, l3] = current ? splitHeroTitle(current.name) : ['', '', ''];
 
+  // ── Swipe tactile mobile ──────────────────────────────────────────────────
+  const touchStartX = useRef<number | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 50) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
+    touchStartX.current = null;
+  };
+
   // Barre de progression
   const [progress, setProgress] = useState(0);
   useEffect(() => {
@@ -400,7 +415,11 @@ function HeroCarousel({
   }
 
   return (
-    <section className="relative w-full h-screen min-h-[620px] overflow-hidden">
+    <section
+      className="relative w-full h-screen min-h-[620px] overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
 
       {/* ── z-index 1 : Fonds de slides (gradient ou photo lifestyle) ── */}
       {heroProducts.map((product, i) => {

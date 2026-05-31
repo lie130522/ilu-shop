@@ -316,7 +316,7 @@ export default function CarouselEditPage() {
                       disabled={isDisabled}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${
                         isChecked
-                          ? 'bg-terra/8 border border-terra/30'
+                          ? 'bg-terra/10 border border-terra/30'
                           : isDisabled
                           ? 'opacity-40 cursor-not-allowed'
                           : 'hover:bg-bone border border-transparent'

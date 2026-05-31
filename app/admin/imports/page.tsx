@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
 import { BulkFileImport } from './_components/BulkFileImport';
+import {
+  subscribeImportSources,
+  createImportSource,
+  deleteImportSource,
+  type ImportSource,
+} from '@/lib/firebase/import-sources';
 
 interface ScrapeResult {
   title: string;
@@ -17,21 +23,6 @@ interface ScrapeResult {
   siteName: string;
 }
 
-interface ImportSource {
-  id: string;
-  url: string;
-  name: string;
-  lastRun: string;
-  status: 'idle' | 'running' | 'done' | 'error';
-  productsImported: number;
-}
-
-// Mock import history (localStorage in real app)
-const MOCK_SOURCES: ImportSource[] = [
-  { id: 's1', url: 'https://zalando.fr', name: 'Zalando FR', lastRun: '2026-05-24T09:00:00Z', status: 'done', productsImported: 12 },
-  { id: 's2', url: 'https://jumia.cd', name: 'Jumia RDC', lastRun: '2026-05-23T14:30:00Z', status: 'idle', productsImported: 5 },
-];
-
 export default function ImportsPage() {
   const { currentAdmin } = useAdmin();
   const router = useRouter();
@@ -40,8 +31,40 @@ export default function ImportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScrapeResult | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
-  const [sources] = useState<ImportSource[]>(MOCK_SOURCES);
   const [activeTab, setActiveTab] = useState<'files' | 'scrape' | 'sources'>('files');
+
+  // ── Sources Firestore ────────────────────────────────────────────────────────
+  const [sources, setSources] = useState<ImportSource[]>([]);
+  const [showAddSource, setShowAddSource] = useState(false);
+  const [newSourceName, setNewSourceName] = useState('');
+  const [newSourceUrl, setNewSourceUrl] = useState('');
+  const [addingSource, setAddingSource] = useState(false);
+  const [deletingSource, setDeletingSource] = useState<string | null>(null);
+
+  useEffect(() => subscribeImportSources(setSources), []);
+
+  const handleAddSource = async () => {
+    if (!newSourceName.trim() || !newSourceUrl.trim()) return;
+    setAddingSource(true);
+    try {
+      await createImportSource(newSourceName, newSourceUrl);
+      setShowAddSource(false);
+      setNewSourceName('');
+      setNewSourceUrl('');
+    } finally {
+      setAddingSource(false);
+    }
+  };
+
+  const handleDeleteSource = async (source: ImportSource) => {
+    if (!confirm(`Supprimer "${source.name}" définitivement ?`)) return;
+    setDeletingSource(source.id);
+    try {
+      await deleteImportSource(source.id);
+    } finally {
+      setDeletingSource(null);
+    }
+  };
 
   if (!currentAdmin) return null;
   if (!hasPermission(currentAdmin, 'catalog')) return <PermissionDenied permission="catalog" />;
@@ -288,72 +311,129 @@ export default function ImportsPage() {
         {activeTab === 'sources' && (
           <div className="space-y-4">
             <div className="bg-cream border border-line rounded-xl p-5">
-              <h2 className="font-display font-bold text-sm text-ink mb-4">Sources enregistrées</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display font-bold text-sm text-ink">Sources enregistrées</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowAddSource(true)}
+                  className="h-9 px-4 rounded-full bg-terra text-cream font-display text-[10px] font-bold tracking-widest uppercase hover:opacity-90 transition-opacity"
+                >
+                  + Ajouter
+                </button>
+              </div>
               <p className="text-sm text-muted font-light mb-5">
                 Gère les sites fournisseurs ou partenaires depuis lesquels tu importes régulièrement des produits.
               </p>
 
-              <div className="space-y-3">
-                {sources.map((source) => (
-                  <div key={source.id} className="flex items-center gap-4 p-4 bg-bone rounded-lg">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-display font-semibold text-sm text-ink">{source.name}</div>
-                      <div className="text-xs text-muted font-mono truncate">{source.url}</div>
-                      <div className="text-xs text-muted mt-1">
-                        Dernier import : {new Date(source.lastRun).toLocaleDateString('fr-FR')} · {source.productsImported} produits
+              {sources.length === 0 ? (
+                <div className="py-10 text-center border-2 border-dashed border-line rounded-xl">
+                  <p className="text-muted text-sm mb-3">Aucune source enregistrée.</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSource(true)}
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-ink text-cream font-display text-[10px] font-bold tracking-widest uppercase hover:bg-terra transition-colors"
+                  >
+                    + Ajouter une source
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sources.map((source) => (
+                    <div key={source.id} className="flex items-center gap-4 p-4 bg-bone rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-display font-semibold text-sm text-ink">{source.name}</div>
+                        <div className="text-xs text-muted font-mono truncate">{source.url}</div>
+                        <div className="text-xs text-muted mt-1">
+                          {source.lastRun
+                            ? `Dernier import : ${new Date(source.lastRun).toLocaleDateString('fr-FR')} · ${source.productsImported} produit${source.productsImported !== 1 ? 's' : ''}`
+                            : 'Jamais importé'}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => { setUrl(source.url); setActiveTab('scrape'); }}
+                          className="h-8 px-3 rounded-full border border-line bg-cream hover:bg-bone font-display text-[10px] font-semibold tracking-widest uppercase transition-colors"
+                        >
+                          Scraper →
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSource(source)}
+                          disabled={deletingSource === source.id}
+                          className="w-8 h-8 rounded-full border border-line bg-bone hover:bg-terra hover:text-cream hover:border-terra text-muted flex items-center justify-center transition-colors disabled:opacity-40"
+                        >
+                          {deletingSource === source.id ? (
+                            <span className="w-3 h-3 border-2 border-current/40 border-t-current rounded-full animate-spin" />
+                          ) : (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                          )}
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-[10px] font-display font-semibold tracking-widest uppercase px-2 py-1 rounded border ${
-                        source.status === 'done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        source.status === 'running' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                        source.status === 'error' ? 'bg-terra/10 text-terra-dark border-terra/30' :
-                        'bg-bone text-muted border-line'
-                      }`}>
-                        {source.status}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => { setUrl(source.url); setActiveTab('scrape'); }}
-                        className="h-8 px-3 rounded-full border border-line bg-cream hover:bg-bone font-display text-[10px] font-semibold tracking-widest uppercase transition-colors"
-                      >
-                        Scraper →
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                className="mt-4 h-10 px-6 rounded-full border border-dashed border-line text-muted hover:border-terra hover:text-terra font-display text-xs font-semibold tracking-widest uppercase transition-colors"
-              >
-                + Ajouter une source
-              </button>
+                  ))}
+                </div>
+              )}
             </div>
+          </div>
+        )}
 
-            {/* Import history */}
-            <div className="bg-cream border border-line rounded-xl p-5">
-              <h3 className="font-display font-bold text-sm text-ink mb-4">Historique d&apos;imports</h3>
-              <div className="space-y-2">
-                {[
-                  { date: '2026-05-24', source: 'Zalando FR', products: 3, status: 'done' },
-                  { date: '2026-05-23', source: 'Jumia RDC', products: 2, status: 'done' },
-                  { date: '2026-05-22', source: 'URL directe', products: 1, status: 'done' },
-                ].map((entry, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm py-2 border-b border-line last:border-0">
-                    <div className="flex items-center gap-3">
-                      <span className="text-muted text-xs font-mono">{new Date(entry.date).toLocaleDateString('fr-FR')}</span>
-                      <span className="font-medium text-ink">{entry.source}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-muted text-xs">{entry.products} produit{entry.products > 1 ? 's' : ''}</span>
-                      <span className="text-[10px] font-display font-semibold uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {entry.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+        {/* ── Modal ajout source ── */}
+        {showAddSource && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <button
+              type="button"
+              aria-label="Fermer"
+              onClick={() => { setShowAddSource(false); setNewSourceName(''); setNewSourceUrl(''); }}
+              className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
+            />
+            <div className="relative bg-cream rounded-2xl shadow-2xl w-full max-w-md p-6">
+              <h3 className="font-display font-bold text-lg mb-5">Nouvelle source</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block font-display text-[10px] tracking-widest uppercase text-muted font-semibold mb-1.5">
+                    Nom *
+                  </label>
+                  <input
+                    type="text"
+                    value={newSourceName}
+                    onChange={(e) => setNewSourceName(e.target.value)}
+                    placeholder="ex: Zalando France"
+                    autoFocus
+                    className="w-full px-4 py-2.5 bg-bone border border-line rounded-xl text-sm outline-none focus:border-terra"
+                  />
+                </div>
+                <div>
+                  <label className="block font-display text-[10px] tracking-widest uppercase text-muted font-semibold mb-1.5">
+                    URL du site *
+                  </label>
+                  <input
+                    type="url"
+                    value={newSourceUrl}
+                    onChange={(e) => setNewSourceUrl(e.target.value)}
+                    placeholder="https://www.zalando.fr"
+                    className="w-full px-4 py-2.5 bg-bone border border-line rounded-xl text-sm font-mono outline-none focus:border-terra"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => { setShowAddSource(false); setNewSourceName(''); setNewSourceUrl(''); }}
+                  className="flex-1 py-2.5 rounded-xl border border-line text-muted font-display text-[11px] tracking-widest uppercase font-bold hover:bg-bone transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddSource}
+                  disabled={!newSourceName.trim() || !newSourceUrl.trim() || addingSource}
+                  className="flex-1 py-2.5 rounded-xl bg-terra text-cream font-display text-[11px] tracking-widest uppercase font-bold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  {addingSource ? (
+                    <><span className="w-3.5 h-3.5 border-2 border-cream/40 border-t-cream rounded-full animate-spin" /> Ajout…</>
+                  ) : 'Ajouter'}
+                </button>
               </div>
             </div>
           </div>

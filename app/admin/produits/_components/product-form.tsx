@@ -1054,6 +1054,26 @@ export function StepMedias({
       const newImgs: DraftImage[] = [];
       for (const file of Array.from(files)) {
         if (!file.type.startsWith('image/')) continue;
+
+        // ── Validation serveur (type + taille) ──────────────────────────────
+        try {
+          const valRes = await fetch('/api/admin/validate-media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: file.type, size: file.size, filename: file.name }),
+          });
+          const valData = await valRes.json() as { error?: string; warnings?: string[] };
+          if (!valRes.ok) {
+            alert(`⚠ ${file.name} rejeté : ${valData.error}`);
+            continue;
+          }
+          if (valData.warnings?.length) {
+            console.warn(`[validate-media] ${file.name}:`, valData.warnings.join(' '));
+          }
+        } catch {
+          // Validation serveur injoignable — on laisse passer (non bloquant)
+        }
+
         try {
           const img = await readImageFile(file);
           newImgs.push(img);
