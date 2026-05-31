@@ -447,14 +447,14 @@ function HeroCarousel({
         );
       })()}
 
-      {/* ── z-index 3-4 : Grid 2 colonnes — texte gauche / image droite ── */}
+      {/* ── z-index 3-4 : Grid responsive — 1 col mobile / 2 col desktop ── */}
       <div
-        className="absolute inset-0"
-        style={{ display: 'grid', gridTemplateColumns: '55% 45%', zIndex: 3 }}
+        className="absolute inset-0 grid grid-cols-1 [grid-template-rows:42%_58%] md:grid-cols-[55%_45%] md:[grid-template-rows:none]"
+        style={{ zIndex: 3 }}
       >
-        {/* ── ZONE GAUCHE (55%) — texte uniquement, jamais d'image ── */}
+        {/* ── ZONE GAUCHE — texte (order-2 mobile = en bas) ── */}
         <div
-          className="flex flex-col justify-end pb-20 pl-10 lg:pl-14 pr-6"
+          className="order-2 md:order-1 flex flex-col justify-end pb-8 md:pb-20 px-5 md:pl-14 md:pr-6"
           style={{
             zIndex: 4,
             opacity: isTransitioning ? 0 : 1,
@@ -462,17 +462,17 @@ function HeroCarousel({
           }}
         >
           {/* Eyebrow */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3 md:mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-terra shrink-0" />
-            <span className="font-display text-[11px] font-medium tracking-[0.14em] uppercase text-cream/70">
+            <span className="font-display text-[10px] md:text-[11px] font-medium tracking-[0.14em] uppercase text-cream/70">
               {current ? getEyebrow(current) : ''}
             </span>
           </div>
 
           {/* Titre — max 3 lignes, dernière en terra */}
           <h1
-            className="font-display font-extrabold text-cream uppercase mb-5"
-            style={{ fontSize: 'clamp(38px, 5.2vw, 76px)', lineHeight: '0.92', letterSpacing: '-2px' }}
+            className="font-display font-extrabold text-cream uppercase mb-3 md:mb-5"
+            style={{ fontSize: 'clamp(30px, 7.5vw, 76px)', lineHeight: '0.92', letterSpacing: '-2px' }}
           >
             {l1 && <span className="block">{l1}</span>}
             {l2 && <span className="block">{l2}</span>}
@@ -482,26 +482,26 @@ function HeroCarousel({
           {/* Badge prix */}
           {current && (
             <div
-              className="inline-flex items-baseline gap-2 mb-4 px-4 py-2 rounded-xl border border-cream/20 self-start"
+              className="inline-flex items-baseline gap-2 mb-3 md:mb-4 px-3 md:px-4 py-1.5 md:py-2 rounded-xl border border-cream/20 self-start"
               style={{ background: 'rgba(242,237,228,0.10)', backdropFilter: 'blur(8px)' }}
             >
-              <span className="font-display font-extrabold text-cream text-[22px]">${current.priceUSD}</span>
-              <span className="text-cream/55 text-sm">/ {(current.priceUSD * 2000).toLocaleString()} FC</span>
+              <span className="font-display font-extrabold text-cream text-lg md:text-[22px]">${current.priceUSD}</span>
+              <span className="text-cream/55 text-xs md:text-sm">/ {(current.priceUSD * 2000).toLocaleString()} FC</span>
               {current.oldPriceUSD && (
-                <span className="text-cream/40 text-sm line-through">${current.oldPriceUSD}</span>
+                <span className="text-cream/40 text-xs md:text-sm line-through">${current.oldPriceUSD}</span>
               )}
             </div>
           )}
 
-          {/* Description courte */}
+          {/* Description courte — masquée sur très petit écran */}
           {current?.shortDescription && (
-            <p className="text-cream/65 text-sm leading-relaxed max-w-xs mb-5">
+            <p className="hidden sm:block text-cream/65 text-xs md:text-sm leading-relaxed max-w-xs mb-4 md:mb-5">
               {current.shortDescription}
             </p>
           )}
 
-          {/* Stats — inline dans le flux, entre description et CTA */}
-          <div className="flex items-center gap-5 mb-7">
+          {/* Stats — masquées sur mobile pour gagner de l'espace */}
+          <div className="hidden md:flex items-center gap-5 mb-7">
             <div>
               <div className="font-display text-[13px] font-bold text-cream leading-none">
                 {allProductsCount > 0 ? `${allProductsCount}+` : '—'}
@@ -523,14 +523,14 @@ function HeroCarousel({
           {/* CTA */}
           <Link
             href={current ? `/produit/${current.slug}` : '/catalogue'}
-            className="self-start inline-flex items-center gap-3 bg-cream text-ink font-display text-[11px] font-bold tracking-[0.2em] uppercase px-7 py-3.5 rounded-full hover:bg-terra hover:text-cream transition-colors duration-200"
+            className="self-start inline-flex items-center gap-2 bg-cream text-ink font-display text-[10px] md:text-[11px] font-bold tracking-[0.2em] uppercase px-5 md:px-7 py-3 md:py-3.5 rounded-full hover:bg-terra hover:text-cream transition-colors duration-200"
           >
             Voir le produit →
           </Link>
         </div>
 
-        {/* ── ZONE DROITE (45%) — image uniquement, jamais de texte ── */}
-        <div className="relative overflow-hidden" style={{ zIndex: 3 }}>
+        {/* ── ZONE DROITE — image (order-1 mobile = en haut) ── */}
+        <div className="order-1 md:order-2 relative overflow-hidden" style={{ zIndex: 3 }}>
           {current?.images[0] && (
             <Link
               href={`/produit/${current.slug}`}
@@ -542,17 +542,17 @@ function HeroCarousel({
                 alt={current.name}
                 style={{
                   width: '100%',
-                  height: '88%',
+                  height: '90%',
                   objectFit: 'contain',
                   objectPosition: 'center bottom',
-                  filter: 'drop-shadow(-20px 0 50px rgba(26,20,16,0.45))',
-                  transform: isTransitioning ? 'translateX(28px) scale(0.97)' : 'translateX(0) scale(1)',
+                  filter: 'drop-shadow(-12px 0 30px rgba(26,20,16,0.45))',
+                  transform: isTransitioning ? 'translateX(20px) scale(0.97)' : 'translateX(0) scale(1)',
                   opacity: isTransitioning ? 0 : 1,
                   transition: 'transform 0.6s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease',
                 }}
               />
-              {/* Badge hover */}
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+              {/* Badge hover — desktop seulement */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap hidden md:block">
                 <span className="bg-cream/95 backdrop-blur-sm border border-line rounded-full px-5 py-2 font-display text-[10px] tracking-widest uppercase font-bold text-ink shadow-lg">
                   Voir le produit →
                 </span>
@@ -579,7 +579,7 @@ function HeroCarousel({
             type="button"
             onClick={goPrev}
             aria-label="Précédent"
-            className="absolute top-1/2 -translate-y-1/2 left-5 w-11 h-11 rounded-full flex items-center justify-center text-cream transition-all hover:bg-terra"
+            className="hidden md:flex absolute top-1/2 -translate-y-1/2 left-5 w-11 h-11 rounded-full items-center justify-center text-cream transition-all hover:bg-terra"
             style={{ zIndex: 5, background: 'rgba(242,237,228,0.10)', border: '1px solid rgba(242,237,228,0.20)', backdropFilter: 'blur(8px)' }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
@@ -588,7 +588,7 @@ function HeroCarousel({
             type="button"
             onClick={goNext}
             aria-label="Suivant"
-            className="absolute top-1/2 -translate-y-1/2 right-5 w-11 h-11 rounded-full flex items-center justify-center text-cream transition-all hover:bg-terra"
+            className="hidden md:flex absolute top-1/2 -translate-y-1/2 right-5 w-11 h-11 rounded-full items-center justify-center text-cream transition-all hover:bg-terra"
             style={{ zIndex: 5, background: 'rgba(242,237,228,0.10)', border: '1px solid rgba(242,237,228,0.20)', backdropFilter: 'blur(8px)' }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
