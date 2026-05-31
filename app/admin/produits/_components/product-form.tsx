@@ -1394,6 +1394,127 @@ function HeroBgImageField({
   );
 }
 
+// ── Autocrop + normalisation après remove.bg ─────────────────────────────────
+// Après détourage, l'image PNG a un fond transparent mais souvent avec
+// beaucoup d'espace vide autour du produit détouré (marges du remove.bg).
+// Cette fonction :
+//   1. Scanne les pixels pour trouver la bounding box visible
+//   2. Rogne l'espace transparent (+ 4% de padding)
+//   3. Place le produit sur un canvas au ratio cible par catégorie :
+//      mode → 3:4 portrait · technologie/hybrides/services → 1:1 carré
+// Résultat : images homogènes quel que soit l'objet photographié.
+
+const AUTOCROP_RATIOS: Record<string, { w: number; h: number }> = {
+  mode:        { w: 3, h: 4 }, // portrait
+  technologie: { w: 1, h: 1 }, // carré
+  hybrides:    { w: 1, h: 1 }, // carré
+  services:    { w: 1, h: 1 }, // carré
+};
+const AUTOCROP_OUTPUT_PX  = 1200; // dimension max du canvas de sortie
+const AUTOCROP_FILL       = 0.85; // le produit occupe 85 % du canvas
+const AUTOCROP_ALPHA_TRESHOLD = 10; // alpha min pour qu'un pixel soit "visible"
+
+async function autocropAndNormalize(
+  dataUrl: string,
+  category: string,
+): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+
+    img.onload = () => {
+      try {
+        const W = img.naturalWidth;
+        const H = img.naturalHeight;
+
+        // 1. Temp canvas pour lecture des pixels
+        const tmp = document.createElement('canvas');
+        tmp.width = W; tmp.height = H;
+        const tmpCtx = tmp.getContext('2d');
+        if (!tmpCtx) { resolve(dataUrl); return; }
+        tmpCtx.drawImage(img, 0, 0);
+
+        const data = tmpCtx.getImageData(0, 0, W, H).data;
+
+        // 2. Bounding box via scan rapide ligne/colonne
+        let minY = H, maxY = 0, minX = W, maxX = 0;
+        let found = false;
+
+        // minY : première ligne non transparente
+        outer1: for (let y = 0; y < H; y++)
+          for (let x = 0; x < W; x++)
+            if (data[(y * W + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
+              minY = y; found = true; break outer1;
+            }
+        if (!found) { resolve(dataUrl); return; }
+
+        // maxY : dernière ligne non transparente
+        outer2: for (let y = H - 1; y >= minY; y--)
+          for (let x = 0; x < W; x++)
+            if (data[(y * W + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
+              maxY = y; break outer2;
+            }
+
+        // minX : première colonne non transparente
+        outer3: for (let x = 0; x < W; x++)
+          for (let y = minY; y <= maxY; y++)
+            if (data[(y * W + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
+              minX = x; break outer3;
+            }
+
+        // maxX : dernière colonne non transparente
+        outer4: for (let x = W - 1; x >= minX; x--)
+          for (let y = minY; y <= maxY; y++)
+            if (data[(y * W + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
+              maxX = x; break outer4;
+            }
+
+        // 3. Ajouter 4 % de padding autour du produit visible
+        const cropW = maxX - minX;
+        const cropH = maxY - minY;
+        const pad = Math.ceil(Math.max(cropW, cropH) * 0.04);
+        const sx = Math.max(0, minX - pad);
+        const sy = Math.max(0, minY - pad);
+        const sw = Math.min(W, maxX + pad + 1) - sx;
+        const sh = Math.min(H, maxY + pad + 1) - sy;
+
+        // 4. Canvas de sortie au ratio cible
+        const ratio = AUTOCROP_RATIOS[category] ?? { w: 3, h: 4 };
+        const isPortrait = ratio.h > ratio.w;
+        const outW = isPortrait
+          ? Math.round(AUTOCROP_OUTPUT_PX * ratio.w / ratio.h)
+          : AUTOCROP_OUTPUT_PX;
+        const outH = isPortrait
+          ? AUTOCROP_OUTPUT_PX
+          : Math.round(AUTOCROP_OUTPUT_PX * ratio.h / ratio.w);
+
+        const out = document.createElement('canvas');
+        out.width = outW; out.height = outH;
+        const outCtx = out.getContext('2d');
+        if (!outCtx) { resolve(dataUrl); return; }
+        outCtx.clearRect(0, 0, outW, outH); // fond transparent
+
+        // 5. Placer le produit centré (portrait → ancré en bas, carré → centré)
+        const scale = Math.min(outW / sw, outH / sh) * AUTOCROP_FILL;
+        const dw = Math.round(sw * scale);
+        const dh = Math.round(sh * scale);
+        const dx = Math.round((outW - dw) / 2);
+        const dy = isPortrait
+          ? outH - dh - Math.round(outH * 0.02) // portrait : 2 % de marge en bas
+          : Math.round((outH - dh) / 2);         // carré : centré
+
+        outCtx.drawImage(tmp, sx, sy, sw, sh, dx, dy, dw, dh);
+
+        resolve(out.toDataURL('image/png'));
+      } catch {
+        resolve(dataUrl); // fallback : image d'origine intacte
+      }
+    };
+
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 // ── Step 4 : Pipeline IA ──────────────────────────────────────────────────────
 
 export function StepPipeline({
@@ -1460,9 +1581,12 @@ export function StepPipeline({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Détourage échoué');
 
+      // Autocrop transparent borders + normalisation au ratio cible par catégorie
+      const normalizedUrl = await autocropAndNormalize(data.resultBase64, form.category);
+
       updateImage(imgId, {
         pipelineStatus: 'done',
-        processedDataUrl: data.resultBase64,
+        processedDataUrl: normalizedUrl,
         hasTransparentBg: true,
         confidenceScore: data.confidenceScore,
       });

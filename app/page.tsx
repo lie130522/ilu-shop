@@ -468,7 +468,7 @@ function HeroCarousel({
 
       {/* ── z-index 3-4 : Grid responsive — 1 col mobile / 2 col desktop ── */}
       <div
-        className="absolute inset-0 grid grid-cols-1 [grid-template-rows:42%_58%] md:grid-cols-[55%_45%] md:[grid-template-rows:none]"
+        className="absolute inset-0 grid grid-cols-1 [grid-template-rows:48%_52%] md:grid-cols-[55%_45%] md:[grid-template-rows:none]"
         style={{ zIndex: 3 }}
       >
         {/* ── ZONE GAUCHE — texte (order-2 mobile = en bas) ── */}
@@ -555,21 +555,29 @@ function HeroCarousel({
               href={`/produit/${current.slug}`}
               className="absolute inset-0 flex items-end justify-center group"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={current.images[0]}
-                alt={current.name}
-                style={{
-                  width: '100%',
-                  height: '90%',
-                  objectFit: 'contain',
-                  objectPosition: 'center bottom',
-                  filter: 'drop-shadow(-12px 0 30px rgba(26,20,16,0.45))',
-                  transform: isTransitioning ? 'translateX(20px) scale(0.97)' : 'translateX(0) scale(1)',
-                  opacity: isTransitioning ? 0 : 1,
-                  transition: 'transform 0.6s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease',
-                }}
-              />
+              {/*
+               * Wrapper de zoom mobile :
+               * — Mobile  : scale(1.3) depuis le bas → le produit remonte et remplit la zone
+               * — Desktop : scale(1) → comportement d'origine
+               * Le débordement est coupé par overflow-hidden du parent (zone droite).
+               */}
+              <div className="scale-[1.3] md:scale-100 origin-bottom w-full h-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={current.images[0]}
+                  alt={current.name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    objectPosition: 'center bottom',
+                    filter: 'drop-shadow(-12px 0 30px rgba(26,20,16,0.45))',
+                    transform: isTransitioning ? 'translateX(20px) scale(0.97)' : 'translateX(0) scale(1)',
+                    opacity: isTransitioning ? 0 : 1,
+                    transition: 'transform 0.6s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease',
+                  }}
+                />
+              </div>
               {/* Badge hover — desktop seulement */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap hidden md:block">
                 <span className="bg-cream/95 backdrop-blur-sm border border-line rounded-full px-5 py-2 font-display text-[10px] tracking-widest uppercase font-bold text-ink shadow-lg">
