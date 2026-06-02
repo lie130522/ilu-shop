@@ -41,7 +41,11 @@ export default function ImportsPage() {
   const [addingSource, setAddingSource] = useState(false);
   const [deletingSource, setDeletingSource] = useState<string | null>(null);
 
-  useEffect(() => subscribeImportSources(setSources), []);
+  // Souscription uniquement quand l'admin est authentifié et a la permission catalog
+  useEffect(() => {
+    if (!currentAdmin || !hasPermission(currentAdmin, 'catalog')) return;
+    return subscribeImportSources(setSources);
+  }, [currentAdmin]);
 
   const handleAddSource = async () => {
     if (!newSourceName.trim() || !newSourceUrl.trim()) return;

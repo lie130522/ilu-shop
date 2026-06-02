@@ -38,19 +38,25 @@ export default function ComptePage() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [deletingBehavior, setDeletingBehavior] = useState(false);
   const [behaviorDeleted, setBehaviorDeleted] = useState(false);
+  const [behaviorError, setBehaviorError] = useState<string | null>(null);
   const [consentLevel, setConsentLevel] = useState<string | null>(null);
+  const [recentCount, setRecentCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/connexion');
   }, [user, loading, router]);
 
   // Load orders + profile when tab changes
-  // Load cookie consent level on tab change
+  // Lecture des données de confidentialité quand l'onglet s'ouvre
   useEffect(() => {
-    if (tab === 'confidentialite') {
-      setConsentLevel(localStorage.getItem('ilu_cookie_consent'));
-      setBehaviorDeleted(false);
-    }
+    if (tab !== 'confidentialite') return;
+    setConsentLevel(localStorage.getItem('ilu_cookie_consent'));
+    setBehaviorDeleted(false);
+    setBehaviorError(null);
+    try {
+      const raw = localStorage.getItem('ilu_recently_viewed');
+      setRecentCount(raw ? (JSON.parse(raw) as string[]).length : 0);
+    } catch { setRecentCount(0); }
   }, [tab]);
 
   useEffect(() => {
@@ -96,11 +102,14 @@ export default function ComptePage() {
     if (!user) return;
     if (!confirm('Supprimer tout ton historique de navigation et de comportement sur ILU SHOP ?')) return;
     setDeletingBehavior(true);
+    setBehaviorError(null);
     try {
       await deleteUserBehavior(user.uid);
-      // Clear localStorage tracking data
       localStorage.removeItem('ilu_recently_viewed');
+      setRecentCount(0);
       setBehaviorDeleted(true);
+    } catch {
+      setBehaviorError('La suppression a échoué. Vérifie ta connexion et réessaie.');
     } finally {
       setDeletingBehavior(false);
     }
@@ -500,6 +509,9 @@ export default function ComptePage() {
                   Tu peux les supprimer définitivement à tout moment.
                 </p>
 
+                {behaviorError && (
+                  <p className="text-sm text-terra font-display font-medium mb-3">⚠ {behaviorError}</p>
+                )}
                 {behaviorDeleted ? (
                   <div className="flex items-center gap-2 text-emerald-600 text-sm font-display font-medium">
                     <span>✓</span>
@@ -527,16 +539,15 @@ export default function ComptePage() {
                 <h3 className="font-display font-semibold text-sm text-ink mb-1">Produits récemment vus</h3>
                 <p className="text-xs text-muted font-light leading-relaxed mb-4">
                   Stockés localement sur ton appareil (pas sur nos serveurs).{' '}
-                  {getRecentlyViewed().length > 0
-                    ? `${getRecentlyViewed().length} produit${getRecentlyViewed().length > 1 ? 's' : ''} en mémoire.`
+                  {recentCount > 0
+                    ? `${recentCount} produit${recentCount > 1 ? 's' : ''} en mémoire.`
                     : 'Aucun produit mémorisé.'}
                 </p>
                 <button
                   type="button"
                   onClick={() => {
                     localStorage.removeItem('ilu_recently_viewed');
-                    // Force re-render
-                    setConsentLevel(localStorage.getItem('ilu_cookie_consent'));
+                    setRecentCount(0);
                   }}
                   className="h-9 px-5 rounded-full border border-line bg-bone hover:bg-terra hover:text-cream hover:border-terra text-muted font-display text-[10px] font-bold tracking-widest uppercase transition-colors"
                 >

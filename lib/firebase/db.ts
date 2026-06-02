@@ -186,18 +186,17 @@ export async function getUserBehavior(uid: string, n = 50): Promise<BehaviorEven
 /**
  * Supprime tous les événements comportementaux d'un utilisateur.
  * Récursif si plus de 500 documents (limite batch Firestore).
+ * Lance une erreur en cas d'échec (le caller peut informer l'utilisateur).
  */
 export async function deleteUserBehavior(uid: string): Promise<void> {
-  try {
-    const q = query(collection(db, 'users', uid, 'behavior'), limit(500));
-    const snap = await getDocs(q);
-    if (snap.empty) return;
-    const batch = writeBatch(db);
-    snap.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
-    // S'il reste des documents, on recommence
-    if (snap.docs.length === 500) await deleteUserBehavior(uid);
-  } catch { /* non-bloquant */ }
+  const q = query(collection(db, 'users', uid, 'behavior'), limit(500));
+  const snap = await getDocs(q);
+  if (snap.empty) return;
+  const batch = writeBatch(db);
+  snap.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+  // S'il reste des documents, on recommence
+  if (snap.docs.length === 500) await deleteUserBehavior(uid);
 }
 
 /**

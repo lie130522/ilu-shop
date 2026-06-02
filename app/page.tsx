@@ -385,6 +385,8 @@ function HeroCarousel({
     }
     touchStartX.current = null;
   };
+  // Annuler le swipe si l'OS interrompt le geste (appel entrant, notif pull-down…)
+  const handleTouchCancel = () => { touchStartX.current = null; };
 
   // Barre de progression
   const [progress, setProgress] = useState(0);
@@ -419,6 +421,7 @@ function HeroCarousel({
       className="relative w-full h-screen min-h-[620px] overflow-hidden"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
     >
 
       {/* ── z-index 1 : Fonds de slides (gradient ou photo lifestyle) ── */}
@@ -561,7 +564,9 @@ function HeroCarousel({
                * — Desktop : scale(1) → comportement d'origine
                * Le débordement est coupé par overflow-hidden du parent (zone droite).
                */}
-              <div className="scale-[1.3] md:scale-100 origin-bottom w-full h-full">
+              {/* scale-[1.1] : zoom modéré compatible avec les images autocropées (fill=85 %)
+                  0.85 × 1.1 = 0.935 → pas de débordement. md:scale-100 sur desktop. */}
+              <div className="scale-[1.1] md:scale-100 origin-bottom w-full h-full">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={current.images[0]}

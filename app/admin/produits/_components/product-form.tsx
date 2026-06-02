@@ -1410,8 +1410,9 @@ const AUTOCROP_RATIOS: Record<string, { w: number; h: number }> = {
   hybrides:    { w: 1, h: 1 }, // carré
   services:    { w: 1, h: 1 }, // carré
 };
-const AUTOCROP_OUTPUT_PX  = 1200; // dimension max du canvas de sortie
-const AUTOCROP_FILL       = 0.85; // le produit occupe 85 % du canvas
+const AUTOCROP_OUTPUT_PX   = 1200; // dimension max du canvas de sortie
+const AUTOCROP_SCAN_PX     = 2000; // résolution max du canvas de scan (protège la mémoire)
+const AUTOCROP_FILL        = 0.85; // le produit occupe 85 % du canvas
 const AUTOCROP_ALPHA_TRESHOLD = 10; // alpha min pour qu'un pixel soit "visible"
 
 async function autocropAndNormalize(
@@ -1426,56 +1427,62 @@ async function autocropAndNormalize(
         const W = img.naturalWidth;
         const H = img.naturalHeight;
 
-        // 1. Temp canvas pour lecture des pixels
+        // 1. Temp canvas pour lecture des pixels.
+        //    Downscale à AUTOCROP_SCAN_PX max pour éviter les allocations OOM
+        //    sur les grandes photos smartphone (12–48 MP).
+        const scanScale = Math.min(1, AUTOCROP_SCAN_PX / Math.max(W, H));
+        const sW = Math.round(W * scanScale);
+        const sH = Math.round(H * scanScale);
+
         const tmp = document.createElement('canvas');
-        tmp.width = W; tmp.height = H;
+        tmp.width = sW; tmp.height = sH;
         const tmpCtx = tmp.getContext('2d');
         if (!tmpCtx) { resolve(dataUrl); return; }
-        tmpCtx.drawImage(img, 0, 0);
+        tmpCtx.drawImage(img, 0, 0, sW, sH); // downscale lors du dessin
 
-        const data = tmpCtx.getImageData(0, 0, W, H).data;
+        const data = tmpCtx.getImageData(0, 0, sW, sH).data;
 
-        // 2. Bounding box via scan rapide ligne/colonne
-        let minY = H, maxY = 0, minX = W, maxX = 0;
+        // 2. Bounding box via scan rapide ligne/colonne (coordonnées dans l'espace sW×sH)
+        let minY = sH, maxY = 0, minX = sW, maxX = 0;
         let found = false;
 
         // minY : première ligne non transparente
-        outer1: for (let y = 0; y < H; y++)
-          for (let x = 0; x < W; x++)
-            if (data[(y * W + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
+        outer1: for (let y = 0; y < sH; y++)
+          for (let x = 0; x < sW; x++)
+            if (data[(y * sW + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
               minY = y; found = true; break outer1;
             }
         if (!found) { resolve(dataUrl); return; }
 
         // maxY : dernière ligne non transparente
-        outer2: for (let y = H - 1; y >= minY; y--)
-          for (let x = 0; x < W; x++)
-            if (data[(y * W + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
+        outer2: for (let y = sH - 1; y >= minY; y--)
+          for (let x = 0; x < sW; x++)
+            if (data[(y * sW + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
               maxY = y; break outer2;
             }
 
         // minX : première colonne non transparente
-        outer3: for (let x = 0; x < W; x++)
+        outer3: for (let x = 0; x < sW; x++)
           for (let y = minY; y <= maxY; y++)
-            if (data[(y * W + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
+            if (data[(y * sW + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
               minX = x; break outer3;
             }
 
         // maxX : dernière colonne non transparente
-        outer4: for (let x = W - 1; x >= minX; x--)
+        outer4: for (let x = sW - 1; x >= minX; x--)
           for (let y = minY; y <= maxY; y++)
-            if (data[(y * W + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
+            if (data[(y * sW + x) * 4 + 3] > AUTOCROP_ALPHA_TRESHOLD) {
               maxX = x; break outer4;
             }
 
-        // 3. Ajouter 4 % de padding autour du produit visible
+        // 3. Ajouter 4 % de padding autour du produit visible (espace sW×sH)
         const cropW = maxX - minX;
         const cropH = maxY - minY;
         const pad = Math.ceil(Math.max(cropW, cropH) * 0.04);
         const sx = Math.max(0, minX - pad);
         const sy = Math.max(0, minY - pad);
-        const sw = Math.min(W, maxX + pad + 1) - sx;
-        const sh = Math.min(H, maxY + pad + 1) - sy;
+        const sw = Math.min(sW, maxX + pad + 1) - sx;
+        const sh = Math.min(sH, maxY + pad + 1) - sy;
 
         // 4. Canvas de sortie au ratio cible
         const ratio = AUTOCROP_RATIOS[category] ?? { w: 3, h: 4 };
