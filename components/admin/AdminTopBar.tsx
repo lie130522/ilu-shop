@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useAdmin } from './AdminProvider';
+import { useSidebar } from './SidebarContext';
 import { useRouter } from 'next/navigation';
 
 export function AdminTopBar({ title, subtitle }: { title?: string; subtitle?: string }) {
   const { currentAdmin, notifications, markNotificationRead, markAllNotificationsRead, logout } =
     useAdmin();
+  const { setOpen: openSidebar } = useSidebar();
   const router = useRouter();
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -22,14 +24,27 @@ export function AdminTopBar({ title, subtitle }: { title?: string; subtitle?: st
 
   return (
     <header className="bg-cream border-b border-line sticky top-0 z-30">
-      <div className="px-8 py-4 flex items-center justify-between gap-6">
-        <div className="min-w-0">
+      <div className="px-4 md:px-8 py-3 md:py-4 flex items-center justify-between gap-3 md:gap-6">
+
+        {/* ── Hamburger — mobile uniquement ── */}
+        <button
+          type="button"
+          onClick={() => openSidebar(true)}
+          aria-label="Ouvrir le menu"
+          className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-bone transition-colors shrink-0 -ml-1"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        <div className="min-w-0 flex-1">
           {title && (
-            <h1 className="font-display font-bold text-2xl text-ink leading-tight truncate">
+            <h1 className="font-display font-bold text-xl md:text-2xl text-ink leading-tight truncate">
               {title}
             </h1>
           )}
-          {subtitle && <p className="text-xs text-muted font-light mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-muted font-light mt-0.5 truncate">{subtitle}</p>}
         </div>
 
         <div className="flex items-center gap-3">

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAdmin } from './AdminProvider';
+import { useSidebar } from './SidebarContext';
 import type { AdminPermission } from '@/lib/admin/types';
 
 interface NavItem {
@@ -17,6 +18,7 @@ interface NavItem {
 export function AdminSidebar() {
   const path = usePathname();
   const { currentAdmin, orders, notifications, invitations } = useAdmin();
+  const { open, setOpen } = useSidebar();
   if (!currentAdmin) return null;
 
   const unreadOrders = orders.filter((o) => o.unreadCount > 0).length;
@@ -73,16 +75,39 @@ export function AdminSidebar() {
   });
 
   return (
-    <aside className="w-64 shrink-0 bg-ink text-cream/90 flex flex-col h-screen sticky top-0">
-      {/* Brand */}
-      <Link href="/admin" className="p-6 border-b border-cream/10 flex items-center gap-2">
-        <span className="font-display font-extrabold text-xl tracking-[0.18em] text-terra">
-          ILU
-        </span>
-        <span className="font-display font-extrabold text-xl tracking-[0.18em] text-cream">
-          ADMIN.
-        </span>
-      </Link>
+    <aside
+      className={[
+        // Mobile : position fixed, slide-in depuis la gauche, z-50 (au-dessus du backdrop z-40)
+        'fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out',
+        open ? 'translate-x-0' : '-translate-x-full',
+        // Desktop : statique dans le flux flex, toujours visible
+        'lg:static lg:translate-x-0 lg:z-auto',
+        'w-64 shrink-0 bg-ink text-cream/90 flex flex-col h-screen lg:sticky lg:top-0',
+      ].join(' ')}
+    >
+      {/* Brand + bouton fermer (mobile uniquement) */}
+      <div className="p-6 border-b border-cream/10 flex items-center justify-between gap-2">
+        <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2">
+          <span className="font-display font-extrabold text-xl tracking-[0.18em] text-terra">
+            ILU
+          </span>
+          <span className="font-display font-extrabold text-xl tracking-[0.18em] text-cream">
+            ADMIN.
+          </span>
+        </Link>
+
+        {/* Bouton fermer — mobile uniquement */}
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Fermer le menu"
+          className="lg:hidden w-8 h-8 rounded-full flex items-center justify-center text-cream/50 hover:text-cream hover:bg-cream/10 transition-colors shrink-0"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
@@ -97,6 +122,7 @@ export function AdminSidebar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={() => setOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                     active
                       ? 'bg-terra text-cream'
