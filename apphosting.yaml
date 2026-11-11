@@ -46,10 +46,8 @@ env:
     value: "false"
   - variable: SASPAY_API_BASE
     value: https://api.saspay.me/api/v1
-  # À DÉCOMMENTER seulement APRÈS avoir créé les secrets (sinon le déploiement échoue) :
-  #   firebase apphosting:secrets:set SASPAY_SECRET_KEY
-  #   firebase apphosting:secrets:set SASPAY_WEBHOOK_SECRET
-  # - variable: SASPAY_SECRET_KEY
-  #   secret: SASPAY_SECRET_KEY
-  # - variable: SASPAY_WEBHOOK_SECRET
-  #   secret: SASPAY_WEBHOOK_SECRET
+  # Secrets créés avec `firebase apphosting:secrets:set <NOM> --project ilushop`
+  - variable: SASPAY_SECRET_KEY
+    secret: SASPAY_SECRET_KEY
+  - variable: SASPAY_WEBHOOK_SECRET
+    secret: SASPAY_WEBHOOK_SECRET
