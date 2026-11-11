@@ -73,6 +73,8 @@ export interface OrderConversation {
   cartSummary?: string;   // Détail des articles (nom × qty — prix, chaque ligne)
   totalUSD: number;
   paymentMethod?: string;
+  /** Paiement SasPay lié : la preuve est dans payments/{paymentId} (écrit par le serveur seul). */
+  paymentId?: string;
   lastMessage: string;
   lastMessageAt: string;
   unreadCount: number;

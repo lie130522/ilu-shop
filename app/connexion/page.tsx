@@ -35,6 +35,13 @@ export default function ConnexionPage() {
 
   const reset = () => { setError(null); setSuccess(null); };
 
+  // Retour après connexion (ex. ?redirect=/commande) : chemins internes uniquement.
+  const afterLogin = (isAdmin: boolean) => {
+    const r = new URLSearchParams(window.location.search).get('redirect');
+    const safe = r && r.startsWith('/') && !r.startsWith('//') ? r : null;
+    return safe ?? (isAdmin ? '/admin' : '/compte');
+  };
+
   const switchMode = (m: Mode) => { reset(); setMode(m); };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +53,7 @@ export default function ConnexionPage() {
         await login(email, password);
         const uid = auth.currentUser?.uid;
         const isAdmin = uid ? !!(await getAdminByUid(uid)) : false;
-        router.push(isAdmin ? '/admin' : '/compte');
+        router.push(afterLogin(isAdmin));
       } else if (mode === 'register') {
         if (password !== confirmPassword) {
           setError('Les mots de passe ne correspondent pas.');
@@ -74,7 +81,7 @@ export default function ConnexionPage() {
       await loginWithGoogle();
       const uid = auth.currentUser?.uid;
       const isAdmin = uid ? !!(await getAdminByUid(uid)) : false;
-      router.push(isAdmin ? '/admin' : '/compte');
+      router.push(afterLogin(isAdmin));
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? '';
       setError(FIREBASE_ERRORS[code] ?? 'Erreur lors de la connexion Google.');

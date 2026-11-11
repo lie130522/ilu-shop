@@ -23,6 +23,8 @@ import {
   requestNotifPermission,
   showDesktopNotif,
 } from '@/lib/sounds';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase/client';
 
 const STATUSES: OrderStatus[] = [
   'open',
@@ -84,6 +86,13 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     const unsub = initAdminConversations();
     return unsub;
+  }, []);
+
+  // Filet de sécurité SasPay : revérifie les paiements restés en attente (client parti, webhook perdu).
+  useEffect(() => {
+    auth.currentUser?.getIdToken()
+      .then((token) => fetch('/api/payments/reconcile', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }))
+      .catch(() => { /* non bloquant */ });
   }, []);
 
   // Set default active on first load
@@ -344,6 +353,7 @@ export default function AdminOrdersPage() {
                       💳 <strong className="text-ink">{active.paymentMethod}</strong>
                     </span>
                   )}
+                  {active.paymentId && <VerifiedPaymentBadge paymentId={active.paymentId} />}
                 </div>
 
                 {/* Thread */}
@@ -418,6 +428,33 @@ export default function AdminOrdersPage() {
 }
 
 // ── Bubble component for the admin thread view ───────────────
+/** Statut lu dans payments/{id} : la seule source fiable (les conversations sont modifiables par les clients). */
+function VerifiedPaymentBadge({ paymentId }: { paymentId: string }) {
+  const [p, setP] = useState<{ status: string; chargedAmount: number | null; amount: number; networkLabel: string } | null>(null);
+
+  useEffect(() => {
+    return onSnapshot(
+      doc(db, 'payments', paymentId),
+      (snap) => setP(snap.exists() ? (snap.data() as typeof p) : null),
+      () => setP(null),
+    );
+  }, [paymentId]);
+
+  if (!p) return null;
+  if (p.status === 'paid') {
+    return (
+      <span className="text-[11px] font-display font-semibold px-2.5 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+        ✓ Payé, vérifié SasPay · {formatUSD(p.chargedAmount ?? p.amount)} · {p.networkLabel}
+      </span>
+    );
+  }
+  return (
+    <span className="text-[11px] font-display font-semibold px-2.5 py-1 rounded-full border bg-gold/15 text-[#7A5A15] border-gold/30">
+      Paiement SasPay : {p.status === 'pending' ? 'en attente' : p.status === 'expired' ? 'expiré' : 'échoué'}
+    </span>
+  );
+}
+
 function ThreadBubble({ msg }: { msg: ChatMessageRecord }) {
   const isAdmin = msg.sender === 'admin';
   const isSystem = msg.sender === 'system';

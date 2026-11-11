@@ -12,8 +12,20 @@ import { getShopSettings, DEFAULT_SETTINGS } from '@/lib/firebase/settings';
 import type { ShopSettings } from '@/lib/firebase/settings';
 import { getOrCreateSessionId, findOrCreateConversation, sendMessage } from '@/lib/chat/store';
 import type { DeliveryInfo } from '@/lib/firebase/db';
+import { auth } from '@/lib/firebase/client';
+import { normalizeDrcPhone, PAYMENT_HINT_KEY, type Quote } from '@/lib/payments';
 
 type Step = 'recap' | 'livraison' | 'paiement' | 'confirmation';
+
+/** Réponse de /api/payments/quote. */
+interface SaspayOffer {
+  enabled: boolean;
+  requiresLogin?: boolean;
+  configured?: boolean;
+  amount?: number;
+  quotes?: Quote[];
+  error?: string;
+}
 
 const PAYMENT_METHODS = [
   { id: 'mpesa', label: 'M-Pesa', icon: '📱', detail: 'Paiement Mobile Money Vodacom' },
@@ -36,7 +48,7 @@ const STEPS: { key: Step; label: string }[] = [
 export default function CommandePage() {
   const { cart, clearCart, openChat, exchangeRate } = useShop();
   const allProducts = useAllProducts();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [step, setStep] = useState<Step>('recap');
@@ -54,6 +66,9 @@ export default function CommandePage() {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [offer, setOffer] = useState<SaspayOffer | null>(null);
+  const [network, setNetwork] = useState('');
+  const [mmPhone, setMmPhone] = useState('');
 
   // Mark hydration complete
   useEffect(() => { setMounted(true); }, []);
@@ -90,6 +105,94 @@ export default function CommandePage() {
   const isMM = (MM_IDS as readonly string[]).includes(paymentMethod);
   const mmConfig = isMM ? settings[paymentMethod as MMId] : null;
 
+  // Panier envoyé au serveur : jamais de prix, il les relit dans le catalogue.
+  const cartPayload = cart.map(({ productId, quantity, size, color }) => ({ productId, quantity, size, color }));
+  const cartKey = JSON.stringify(cartPayload);
+
+  // SasPay ouvert et utilisable : les boutons Mobile Money manuels sont alors masqués.
+  const saspayOn = !!offer?.enabled && offer.configured !== false && !offer.error;
+  const selectedQuote = paymentMethod === 'saspay'
+    ? offer?.quotes?.find((q) => q.network === network) ?? null
+    : null;
+  const payTotal = selectedQuote ? selectedQuote.total : subtotal;
+
+  // Moyens SasPay et frais exacts pour ce panier (recalculés côté serveur)
+  useEffect(() => {
+    if (step !== 'paiement' || authLoading) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch('/api/payments/quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ items: JSON.parse(cartKey) }),
+        });
+        const data = (await res.json().catch(() => ({}))) as SaspayOffer & { error?: string };
+        if (cancelled) return;
+        setOffer(res.ok ? data : { enabled: true, configured: true, error: data.error ?? 'Paiement en ligne indisponible.' });
+      } catch {
+        if (!cancelled) setOffer(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [step, authLoading, user, cartKey]);
+
+  // Un moyen manuel masqué ne doit pas rester sélectionné
+  useEffect(() => {
+    if (saspayOn && isMM) setPaymentMethod('');
+  }, [saspayOn, isMM]);
+
+  const selectSaspay = (q: Quote) => {
+    setError(null);
+    setPaymentMethod('saspay');
+    setNetwork(q.network);
+    if (q.kind === 'mobile_money' && !mmPhone) setMmPhone(delivery.phone);
+  };
+
+  const startSaspay = async () => {
+    if (!selectedQuote) { setError('Choisis un moyen de paiement.'); return; }
+    let phone: string | undefined;
+    if (selectedQuote.kind === 'mobile_money') {
+      const n = normalizeDrcPhone(mmPhone);
+      if (!n) { setError('Numéro Mobile Money invalide (ex. 0812345678 ou +243 812 345 678).'); return; }
+      phone = n;
+    }
+    setLoading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) { router.push('/connexion?redirect=/commande'); return; }
+      const res = await fetch('/api/payments/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          items: cartPayload,
+          delivery,
+          network: selectedQuote.network,
+          phone,
+          sessionId: getOrCreateSessionId(),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        paymentId?: string; checkoutUrl?: string | null; instructions?: string | null; error?: string;
+      };
+      if (!res.ok || !data.paymentId) {
+        setError(data.error ?? 'Le paiement n\'a pas pu démarrer. Réessaie.');
+        setLoading(false);
+        return;
+      }
+      try {
+        sessionStorage.setItem(PAYMENT_HINT_KEY(data.paymentId), JSON.stringify({ instructions: data.instructions ?? null }));
+      } catch { /* navigation privée : l'écran d'attente s'en passe */ }
+      // Carte (et certains opérateurs) : page sécurisée SasPay, qui ramène ensuite sur l'écran d'attente.
+      if (data.checkoutUrl) { window.location.assign(data.checkoutUrl); return; }
+      router.push(`/commande/paiement/${data.paymentId}`);
+    } catch {
+      setError('Erreur réseau. Vérifie ta connexion et réessaie.');
+      setLoading(false);
+    }
+  };
+
   // Redirect if cart empty — only after hydration to avoid false redirect
   useEffect(() => {
     if (!mounted) return;
@@ -109,6 +212,7 @@ export default function CommandePage() {
   const handleConfirm = async () => {
     setError(null);
     if (!paymentMethod) { setError('Choisis un mode de paiement.'); return; }
+    if (paymentMethod === 'saspay') { await startSaspay(); return; }
     setLoading(true);
     try {
       const pmLabel = PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label ?? paymentMethod;
@@ -388,12 +492,112 @@ export default function CommandePage() {
                 </div>
               )}
 
+              {/* ── Paiement en ligne SasPay ── */}
+              {offer?.enabled && (
+                <div className="rounded-lg border border-line bg-bone/60 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-display font-semibold text-sm text-ink">⚡ Paiement en ligne</p>
+                    <span className="text-[10px] font-display tracking-widest uppercase text-muted">Sécurisé par SasPay</span>
+                  </div>
+
+                  {offer.requiresLogin ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted font-light leading-relaxed">
+                        M-Pesa, Airtel Money, Orange Money ou carte : la demande de paiement arrive directement sur ton téléphone.
+                        Connecte-toi pour payer en ligne et suivre ta commande.
+                      </p>
+                      <Link
+                        href="/connexion?redirect=/commande"
+                        className="inline-flex h-10 px-5 items-center rounded-full bg-ink hover:bg-terra text-cream font-display text-[11px] font-semibold tracking-widest uppercase transition-colors"
+                      >
+                        Se connecter pour payer
+                      </Link>
+                    </div>
+                  ) : offer.configured === false ? (
+                    <p className="text-sm text-muted font-light">
+                      🔒 Visible par les admins uniquement : SasPay n&apos;est pas encore configuré (clé SASPAY_SECRET_KEY absente).
+                    </p>
+                  ) : offer.error ? (
+                    <p className="text-sm text-terra-dark">{offer.error} Les autres moyens restent disponibles ci-dessous.</p>
+                  ) : !offer.quotes ? (
+                    <p className="text-sm text-muted">Chargement des moyens de paiement…</p>
+                  ) : offer.quotes.length === 0 ? (
+                    <p className="text-sm text-muted">Aucun moyen de paiement en ligne n&apos;est disponible pour ce montant.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {offer.quotes.map((q) => {
+                        const active = paymentMethod === 'saspay' && network === q.network;
+                        return (
+                          <div
+                            key={q.network}
+                            className={`rounded-lg border transition-all ${active ? 'border-terra bg-terra/5' : 'border-line bg-cream hover:border-terra/40'}`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => selectSaspay(q)}
+                              className="w-full text-left p-3 sm:p-4 flex items-center gap-3 sm:gap-4"
+                            >
+                              <span className="text-xl sm:text-2xl shrink-0">{q.kind === 'card' ? '💳' : '📱'}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-display font-semibold text-sm text-ink">{q.label}</div>
+                                <div className="text-xs text-muted mt-0.5">
+                                  {q.kind === 'card' ? 'Visa · Mastercard' : 'Demande sur ton téléphone'}
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0 whitespace-nowrap">
+                                <div className="font-display font-bold text-sm text-ink">{formatUSD(q.total)}</div>
+                                <div className="text-[11px] text-muted">+ {formatUSD(q.fee)} de frais</div>
+                              </div>
+                              <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${active ? 'border-terra bg-terra' : 'border-line'}`}>
+                                {active && <div className="w-2 h-2 rounded-full bg-cream" />}
+                              </div>
+                            </button>
+
+                            {active && q.kind === 'mobile_money' && (
+                              <div className="px-3 sm:px-4 pb-4 space-y-2">
+                                <label className="block">
+                                  <span className="font-display text-[11px] tracking-widest uppercase font-semibold text-ink mb-2 block">
+                                    Numéro {q.label} à débiter
+                                  </span>
+                                  <input
+                                    type="tel"
+                                    inputMode="tel"
+                                    value={mmPhone}
+                                    onChange={(e) => setMmPhone(e.target.value)}
+                                    className="w-full bg-cream border border-line rounded-md px-4 py-3 text-sm outline-none focus:border-terra transition-colors"
+                                    placeholder="0812345678"
+                                  />
+                                </label>
+                                {q.operatorFee > 0 && (
+                                  <p className="text-xs text-muted font-light leading-relaxed">
+                                    {q.label} peut ajouter ses propres frais (≈ {formatUSD(q.operatorFee)}), soit ≈ {formatUSD(q.estimatedTotal)} débités au total.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {active && q.kind === 'card' && (
+                              <p className="px-3 sm:px-4 pb-4 text-xs text-muted font-light">
+                                Tu seras redirigé vers la page sécurisée SasPay, puis ramené ici une fois le paiement terminé.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {saspayOn && (
+                <p className="font-display text-[11px] tracking-widest uppercase text-muted pt-1">Autres moyens</p>
+              )}
+
               <div className="space-y-3">
                 {PAYMENT_METHODS.map((pm) => {
-                  // Hide inactive MM methods
+                  // Hide inactive MM methods (et tous les MM manuels quand SasPay est ouvert)
                   if ((MM_IDS as readonly string[]).includes(pm.id)) {
                     const cfg = settings[pm.id as MMId];
-                    if (!cfg.active) return null;
+                    if (!cfg.active || saspayOn) return null;
                   }
                   return (
                     <button
@@ -492,8 +696,10 @@ export default function CommandePage() {
                   {loading ? (
                     <>
                       <span className="w-4 h-4 border-2 border-cream/40 border-t-cream rounded-full animate-spin" />
-                      Traitement…
+                      {selectedQuote ? 'Envoi de la demande…' : 'Traitement…'}
                     </>
+                  ) : selectedQuote ? (
+                    `Payer ${formatUSD(selectedQuote.total)} →`
                   ) : (
                     '✓ Confirmer la commande'
                   )}
@@ -601,14 +807,20 @@ export default function CommandePage() {
                     </span>
                   </div>
                 )}
+                {selectedQuote && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gold/80">Frais de paiement ({selectedQuote.label})</span>
+                    <span className="font-display font-semibold text-gold">+ {formatUSD(selectedQuote.fee)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="mt-3 pt-3 border-t border-cream/10 flex items-end justify-between">
                 <span className="font-display text-xs tracking-widest uppercase text-cream/60">Total</span>
                 <div className="text-right">
-                  <div className="font-display font-extrabold text-2xl text-cream">{formatUSD(subtotal)}</div>
+                  <div className="font-display font-extrabold text-2xl text-cream">{formatUSD(payTotal)}</div>
                   <div className="text-gold font-display text-sm mt-0.5">
-                    ≈ {formatCDF(usdToCdf(subtotal, exchangeRate))}{isMM ? ` + ${formatCDF(settings.withdrawalFeeCDF)}` : ''}
+                    ≈ {formatCDF(usdToCdf(payTotal, exchangeRate))}{isMM ? ` + ${formatCDF(settings.withdrawalFeeCDF)}` : ''}
                   </div>
                 </div>
               </div>
@@ -630,7 +842,7 @@ export default function CommandePage() {
                   {paymentMethod && (
                     <div className="flex gap-2">
                       <span>💳</span>
-                      <span>{PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label}</span>
+                      <span>{selectedQuote ? `${selectedQuote.label} (SasPay)` : PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label}</span>
                     </div>
                   )}
                 </div>

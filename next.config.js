@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   // Packages ESM-only chargés côté serveur uniquement — ne pas bundler
   experimental: {
-    serverComponentsExternalPackages: ['resend'],
+    serverComponentsExternalPackages: ['resend', 'firebase-admin'],
   },
   images: {
     remotePatterns: [

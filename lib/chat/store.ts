@@ -96,6 +96,7 @@ function normalizeConv(id: string, data: Record<string, unknown>): OrderConversa
     cartSummary: (data.cartSummary as string | undefined) ?? undefined,
     totalUSD: (data.totalUSD as number) ?? 0,
     paymentMethod: (data.paymentMethod as string | undefined) ?? undefined,
+    paymentId: (data.paymentId as string | undefined) ?? undefined,
     lastMessage: (data.lastMessage as string) ?? '',
     lastMessageAt: toISO(data.lastMessageAt),
     unreadCount: (data.unreadCount as number) ?? 0,
