@@ -6,6 +6,7 @@ import { storage } from '@/lib/firebase/client';
 import {
   saveAdminProduct,
   slugify,
+  DEFAULT_SIZES,
   type StoredProduct,
   type ProductCategory,
   type ProductColor,
@@ -46,7 +47,7 @@ interface ImportedFile {
   base64?:      string;
   status:       'pending' | 'analyzing' | 'ready' | 'error' | 'saving' | 'saved' | 'merged';
   error?:       string;
-  // Champs produit
+  // Champs produit basiques
   name:             string;
   category:         ProductCategory;
   subcategory:      string;
@@ -55,6 +56,13 @@ interface ImportedFile {
   priceUSD:         number;
   tags:             string;
   genre:            string;
+  // Champs produit avancés (fiche complète)
+  sizes:            string[];
+  badge:            '' | 'new' | 'hot' | 'sale';
+  stock:            number;
+  brand:            string;
+  // Couleurs détectées par Gemini (pré-remplit le modal de fusion)
+  detectedColors?:  { label: string; hex: string }[];
   // Variantes couleur (quand cet item est le "primaire" d'un groupe fusionné)
   colorVariants?:   ColorVariant[];
   // Groupe de similarité (détecté automatiquement après analyse)
@@ -94,6 +102,7 @@ function defaultFile(file: File): ImportedFile {
     name: nameFromFilename(file.name),
     category: 'mode', subcategory: 'Vêtements',
     shortDescription: '', description: '', priceUSD: 0, tags: '', genre: 'mixte',
+    sizes: [], badge: '', stock: 10, brand: '',
   };
 }
 
@@ -164,6 +173,13 @@ export function BulkFileImport() {
           priceUSD:         typeof data.priceUSD === 'number'         ? data.priceUSD         : f.priceUSD,
           tags:             Array.isArray(data.tags)                  ? (data.tags as string[]).join(', ') : f.tags,
           genre:            typeof data.genre === 'string'            ? data.genre            : 'mixte',
+          // Nouveaux champs détectés par Gemini
+          detectedColors:   Array.isArray(data.colors)
+            ? (data.colors as {label: string; hex: string}[]).filter((c) => c.label && c.hex)
+            : f.detectedColors,
+          sizes:            Array.isArray(data.suggestedSizes) && f.sizes.length === 0
+            ? (data.suggestedSizes as string[])
+            : f.sizes,
         } : f);
         return recomputeSimilarity(updated);
       });
@@ -301,9 +317,9 @@ export function BulkFileImport() {
           priceUSD: item.priceUSD,
           shortDescription: item.shortDescription,
           description: item.description,
-          stock: 10,
+          stock: item.stock > 0 ? item.stock : 10,
           tags: item.tags.split(',').map((t) => t.trim()).filter(Boolean),
-          sizes: [],
+          sizes: item.sizes,
           colors,
           colorImages: colorImageUrls,
           images: [{
@@ -317,6 +333,8 @@ export function BulkFileImport() {
           videos: [],
           genre: item.genre as StoredProduct['genre'],
           status: 'active',
+          badge: item.badge || undefined,
+          brand: item.brand || undefined,
           rating: 0, reviewCount: 0,
           createdAt: now, updatedAt: now,
         };
@@ -512,11 +530,13 @@ function MergeModal({
   onClose: () => void;
 }) {
   const [primaryId, setPrimaryId] = useState(items[0]?.id ?? '');
+  const defaultHexes = ['#1A1A1A','#4B3B2A','#2A3F5F','#FFFFFF','#8B0000','#D4A017','#2E5E2E','#6B4C8A'];
   const [variants, setVariants] = useState<{ sourceId: string; label: string; hex: string }[]>(
     items.map((item, i) => ({
       sourceId: item.id,
-      label: '',
-      hex: ['#1A1A1A','#4B3B2A','#2A3F5F','#FFFFFF','#8B0000','#D4A017','#2E5E2E','#6B4C8A'][i] ?? '#888888',
+      // Pré-remplir avec la couleur détectée par Gemini si disponible
+      label: item.detectedColors?.[0]?.label ?? '',
+      hex:   item.detectedColors?.[0]?.hex   ?? defaultHexes[i] ?? '#888888',
     }))
   );
 
@@ -648,6 +668,7 @@ interface CardProps {
 function ProductImportCard({ item, selectMode, selected, onToggleSelect, onSelectGroup, onUpdate, onRemove, onRetry, onUnmerge }: CardProps) {
   const disabled   = item.status === 'saved' || item.status === 'saving';
   const isMergedPrimary = !!item.colorVariants?.length;
+  const [showDetails, setShowDetails] = useState(false);
 
   const borderClass =
     selected           ? 'border-terra bg-terra/3' :
@@ -783,6 +804,107 @@ function ProductImportCard({ item, selectMode, selected, onToggleSelect, onSelec
             placeholder="Tags séparés par virgule" disabled={disabled}
             className="w-full bg-bone border border-line rounded-lg px-3 py-1.5 text-[11px] text-muted outline-none focus:border-terra disabled:opacity-60"
           />
+
+          {/* ── Accordéon "Détails avancés" ── */}
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            className="flex items-center gap-1.5 text-[10px] font-display font-semibold tracking-widest uppercase text-muted hover:text-terra transition-colors mt-1"
+          >
+            <span className={`transition-transform text-[8px] ${showDetails ? 'rotate-90' : ''}`}>▶</span>
+            Détails avancés
+            {(item.sizes.length > 0 || item.badge || item.brand) && (
+              <span className="bg-terra text-cream text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">
+                {[item.sizes.length > 0, !!item.badge, !!item.brand].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+
+          {showDetails && (
+            <div className="border border-line rounded-xl p-3 space-y-3 bg-bone/50">
+
+              {/* Tailles disponibles */}
+              <div>
+                <label className="block font-display text-[9px] tracking-widest uppercase text-muted mb-1.5">
+                  Tailles disponibles
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DEFAULT_SIZES[item.category].map((size) => {
+                    const active = item.sizes.includes(size);
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => {
+                          const next = active
+                            ? item.sizes.filter((s) => s !== size)
+                            : [...item.sizes, size];
+                          onUpdate(item.id, 'sizes', next);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-display font-semibold border transition-all ${
+                          active
+                            ? 'bg-terra text-cream border-terra'
+                            : 'bg-cream border-line text-muted hover:border-terra hover:text-terra'
+                        } disabled:opacity-60`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Badge + Stock + Marque */}
+              <div className="flex gap-2 flex-wrap items-end">
+                {/* Badge */}
+                <div className="flex-1 min-w-[120px]">
+                  <label className="block font-display text-[9px] tracking-widest uppercase text-muted mb-1">Badge</label>
+                  <select
+                    value={item.badge}
+                    onChange={(e) => onUpdate(item.id, 'badge', e.target.value as ImportedFile['badge'])}
+                    disabled={disabled}
+                    className="w-full bg-cream border border-line rounded-lg px-2 py-1.5 text-xs outline-none focus:border-terra disabled:opacity-60"
+                  >
+                    <option value="">Aucun</option>
+                    <option value="new">🆕 Nouveau</option>
+                    <option value="hot">🔥 Tendance</option>
+                    <option value="sale">🏷 Promo</option>
+                  </select>
+                </div>
+
+                {/* Stock */}
+                <div>
+                  <label className="block font-display text-[9px] tracking-widest uppercase text-muted mb-1">Stock</label>
+                  <div className="flex items-center gap-1 bg-cream border border-line rounded-lg px-2 py-1.5">
+                    <input
+                      type="number"
+                      value={item.stock}
+                      onChange={(e) => onUpdate(item.id, 'stock', parseInt(e.target.value, 10) || 0)}
+                      disabled={disabled}
+                      min={0}
+                      className="w-14 bg-transparent text-sm font-display font-bold text-ink outline-none disabled:opacity-60"
+                    />
+                    <span className="text-[9px] text-muted">unités</span>
+                  </div>
+                </div>
+
+                {/* Marque */}
+                <div className="flex-1 min-w-[100px]">
+                  <label className="block font-display text-[9px] tracking-widest uppercase text-muted mb-1">Marque</label>
+                  <input
+                    type="text"
+                    value={item.brand}
+                    onChange={(e) => onUpdate(item.id, 'brand', e.target.value)}
+                    placeholder="ex: Zara, Nike…"
+                    disabled={disabled}
+                    className="w-full bg-cream border border-line rounded-lg px-2 py-1.5 text-xs outline-none focus:border-terra disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+            </div>
+          )}
         </div>
 
         {/* ── Statut + actions ── */}

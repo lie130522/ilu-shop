@@ -51,10 +51,14 @@ export async function POST(req: NextRequest) {
     const prompt = `Tu es un expert en e-commerce mode et lifestyle pour ILU SHOP (Kinshasa, RDC).
 Analyse cette image et réponds en JSON brut uniquement (pas de markdown).
 
-{"name":"Nom commercial accrocheur en français (ex: Polo Sable Premium)","category":"mode ou technologie ou hybrides ou services","subcategory":"Vêtements ou Chaussures ou Bijoux & accessoires classiques ou Maroquinerie ou Parfums & beauté ou Téléphonie ou Informatique ou Accessoires tech ou Wearables / accessoires connectés ou Abonnements plateformes ou Forfaits data","shortDescription":"Phrase max 80 caractères","description":"2-3 phrases éditoriales en français","priceUSD":45,"tags":["tag1","tag2","tag3"],"genre":"homme ou femme ou mixte ou enfant"}
+{"name":"Nom commercial accrocheur en français (ex: Polo Sable Premium)","category":"mode ou technologie ou hybrides ou services","subcategory":"Vêtements ou Chaussures ou Bijoux & accessoires classiques ou Maroquinerie ou Parfums & beauté ou Téléphonie ou Informatique ou Accessoires tech ou Wearables / accessoires connectés ou Abonnements plateformes ou Forfaits data","shortDescription":"Phrase max 80 caractères","description":"2-3 phrases éditoriales en français","priceUSD":45,"tags":["tag1","tag2","tag3"],"genre":"homme ou femme ou mixte ou enfant","colors":[{"label":"Nom français de la couleur dominante ex: Noir Charbon","hex":"#1a1a1a"}],"suggestedSizes":["M","L","XL"]}
 
 Fichier source (indice): "${filename}"
-Règles: priceUSD entier en USD (vêtements:15-80, chaussures:40-150, parfums:30-120, tech:50-500). La subcategory DOIT correspondre à la category.`;
+Règles:
+- priceUSD entier en USD (vêtements:15-80, chaussures:40-150, parfums:30-120, tech:50-500)
+- La subcategory DOIT correspondre à la category
+- colors: détecter la couleur principale du produit avec son nom français et code hex précis
+- suggestedSizes: tailles les plus probables selon le type de produit (vêtements: XS/S/M/L/XL, chaussures: 38-45, tech: capacité mémoire, services: durée)`;
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,

@@ -152,11 +152,7 @@ export default function HomePage() {
               Aucun produit à la une pour l&apos;instant.
             </div>
           ) : (
-            <div className={`grid grid-cols-2 gap-x-5 gap-y-12 ${featured.length >= 4 ? 'lg:grid-cols-4' : featured.length === 3 ? 'lg:grid-cols-3' : featured.length === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-1 max-w-xs mx-auto'}`}>
-              {featured.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <FeaturedCarousel products={featured} />
           )}
         </div>
       </section>
@@ -658,6 +654,124 @@ function HeroCarousel({
       </div>
 
     </section>
+  );
+}
+
+// ── Carousel "À la une" ───────────────────────────────────────────────────────
+
+function FeaturedCarousel({ products }: { products: Product[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [current, setCurrent] = useState(0);
+
+  const getCardWidth = () => {
+    const el = scrollRef.current;
+    if (!el || !el.children[0]) return 300;
+    return (el.children[0] as HTMLElement).offsetWidth + 20;
+  };
+
+  const scrollTo = useCallback((idx: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: idx * getCardWidth(), behavior: 'smooth' });
+    setCurrent(idx);
+  }, []);
+
+  const prev = () => scrollTo(Math.max(0, current - 1));
+  const next = useCallback(() => scrollTo(Math.min(products.length - 1, current + 1)), [current, products.length, scrollTo]);
+
+  // Auto-advance toutes les 5 secondes
+  useEffect(() => {
+    if (products.length <= 1) return;
+    const t = setInterval(() => {
+      setCurrent((c) => {
+        const next = c + 1 >= products.length ? 0 : c + 1;
+        scrollRef.current?.scrollTo({ left: next * getCardWidth(), behavior: 'smooth' });
+        return next;
+      });
+    }, 5000);
+    return () => clearInterval(t);
+  }, [products.length]);
+
+  // Sync dot on native scroll
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cardW = getCardWidth();
+    setCurrent(Math.round(el.scrollLeft / cardW));
+  };
+
+  // Swipe mobile
+  const touchX = useRef<number | null>(null);
+
+  return (
+    <div className="relative -mx-6 lg:-mx-10 px-6 lg:px-10">
+      {/* Scrollable row */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          if (touchX.current === null) return;
+          const dx = e.changedTouches[0].clientX - touchX.current;
+          if (Math.abs(dx) > 50) dx < 0 ? next() : prev();
+          touchX.current = null;
+        }}
+        className="flex gap-5 overflow-x-auto pb-4"
+        style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {products.map((p) => (
+          <div
+            key={p.id}
+            className="shrink-0 w-[calc(50%-10px)] lg:w-[calc(25%-15px)]"
+            style={{ scrollSnapAlign: 'start' }}
+          >
+            <ProductCard product={p} />
+          </div>
+        ))}
+      </div>
+
+      {/* Flèches navigation — desktop */}
+      {products.length > 2 && (
+        <>
+          <button
+            type="button"
+            onClick={prev}
+            disabled={current === 0}
+            className="hidden lg:flex absolute top-1/2 -translate-y-1/2 -left-5 w-11 h-11 items-center justify-center bg-cream border border-line rounded-full shadow-sm hover:border-terra hover:text-terra transition-colors disabled:opacity-30"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button
+            type="button"
+            onClick={next}
+            disabled={current >= products.length - 1}
+            className="hidden lg:flex absolute top-1/2 -translate-y-1/2 -right-5 w-11 h-11 items-center justify-center bg-cream border border-line rounded-full shadow-sm hover:border-terra hover:text-terra transition-colors disabled:opacity-30"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </>
+      )}
+
+      {/* Dots */}
+      {products.length > 1 && (
+        <div className="flex gap-2 mt-6 justify-center">
+          {products.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => scrollTo(i)}
+              aria-label={`Produit ${i + 1}`}
+              className="transition-all duration-300 rounded-full"
+              style={{
+                width: i === current ? 24 : 8,
+                height: 8,
+                background: i === current ? 'var(--color-terra, #C4765A)' : 'rgba(196,118,90,0.3)',
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -88,13 +88,30 @@ export function ProductDetail({ product }: { product: Product }) {
   const [colorImage, setColorImage] = useState<string | null>(null); // image override par couleur
   const [size, setSize] = useState<string | undefined>(product.sizes?.[0]);
   const [color, setColor] = useState<string | undefined>(product.colors?.[0]?.name);
-  // URLs couleur résolues — fallback Storage si colorImageUrls absent du document Firestore
+  // URLs couleur résolues — 3 niveaux de fallback
+  const buildInitialColorUrls = (): Record<string, string> => {
+    // 1. Priorité : colorImageUrls du document Firestore
+    if (product.colorImageUrls && Object.keys(product.colorImageUrls).length > 0) {
+      return product.colorImageUrls;
+    }
+    // 2. Fallback : associer chaque couleur à l'image de galerie correspondante par index
+    if (product.colors?.length && product.images?.length > 1) {
+      const urls: Record<string, string> = {};
+      product.colors.forEach((c, i) => {
+        if (product.images[i]) urls[c.hex.toLowerCase()] = product.images[i];
+      });
+      if (Object.keys(urls).length > 0) return urls;
+    }
+    return {};
+  };
+
   const [resolvedColorUrls, setResolvedColorUrls] = useState<Record<string, string>>(
-    product.colorImageUrls ?? {},
+    buildInitialColorUrls,
   );
 
   useEffect(() => {
-    if (product.colorImageUrls || !product.colors?.length || !product.id) return;
+    // 3. Fallback async Storage : tente de récupérer les images depuis Firebase Storage
+    if (Object.keys(resolvedColorUrls).length > 0 || !product.colors?.length || !product.id) return;
     (async () => {
       try {
         const [{ ref, getDownloadURL }, { storage }] = await Promise.all([
@@ -109,8 +126,8 @@ export function ProductDetail({ product }: { product: Product }) {
               const url = await getDownloadURL(
                 ref(storage, `products/${product.id}/color-${sanitized}`),
               );
-              resolved[c.hex] = url;
-            } catch { /* image couleur absente pour cette variante */ }
+              resolved[c.hex.toLowerCase()] = url;
+            } catch { /* image absente pour cette couleur */ }
           }),
         );
         if (Object.keys(resolved).length > 0) setResolvedColorUrls(resolved);
@@ -325,7 +342,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 <div className="mt-3 flex gap-2">
                   {product.colors.map((c) => {
                     const active = color === c.name;
-                    const imgUrl = resolvedColorUrls[c.hex];
+                    const imgUrl = resolvedColorUrls[c.hex.toLowerCase()] ?? resolvedColorUrls[c.hex];
                     return (
                       <button
                         key={c.name}
