@@ -6,6 +6,7 @@ import { AdminTopBar } from '@/components/admin/AdminTopBar';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { hasPermission, PermissionDenied } from '@/components/admin/PermissionGuard';
 import { BulkFileImport } from './_components/BulkFileImport';
+import { OutfitImport } from './_components/OutfitImport';
 import {
   subscribeImportSources,
   createImportSource,
@@ -31,7 +32,7 @@ export default function ImportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScrapeResult | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
-  const [activeTab, setActiveTab] = useState<'files' | 'scrape' | 'sources'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'outfit' | 'scrape' | 'sources'>('files');
 
   // ── Sources Firestore ────────────────────────────────────────────────────────
   const [sources, setSources] = useState<ImportSource[]>([]);
@@ -134,9 +135,10 @@ export default function ImportsPage() {
         {/* Tabs */}
         <div className="flex gap-1 bg-bone rounded-lg p-1 mb-8 w-fit">
           {([
-            { key: 'files',   label: '📁 Depuis des fichiers' },
+            { key: 'files',   label: '📁 Fichiers' },
+            { key: 'outfit',  label: '👗 Import Outfit' },
             { key: 'scrape',  label: '🔍 Scraper une URL' },
-            { key: 'sources', label: '📋 Sources enregistrées' },
+            { key: 'sources', label: '📋 Sources' },
           ] as const).map(({ key, label }) => (
             <button
               key={key}
@@ -164,6 +166,24 @@ export default function ImportsPage() {
                 (nom, catégorie, description, prix suggéré). Tu peux tout corriger avant d'importer.
               </p>
               <BulkFileImport />
+            </div>
+          </div>
+        )}
+
+        {/* ── Outfit tab ── */}
+        {activeTab === 'outfit' && (
+          <div className="space-y-4">
+            <div className="bg-cream border border-line rounded-xl p-6">
+              <h2 className="font-display font-bold text-base text-ink mb-2">
+                Import d'un outfit complet
+              </h2>
+              <p className="text-sm text-muted font-light mb-6 leading-relaxed">
+                Dépose une photo de tenue (flat lay ou look porté).{' '}
+                <strong className="text-ink">Gemini identifie chaque article</strong>{' '}
+                et vérifie s'il existe dans le catalogue. Les articles manquants peuvent être créés ou mis en précommande.
+                L'outfit ne peut pas être publié sans au moins 1 article du catalogue lié.
+              </p>
+              <OutfitImport />
             </div>
           </div>
         )}
