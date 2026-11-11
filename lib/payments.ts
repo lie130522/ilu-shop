@@ -32,18 +32,18 @@ export interface RateEntry {
   payin: { available: boolean; otp_required?: boolean; otp_instructions?: string | null; tiers: FeeTier[] } | null;
 }
 
-/** Tarifs relevés sur le compte matchmyjob le 2026-11-10 : secours si SasPay ne répond pas. */
+/** Tarifs relevés sur le tableau de bord SasPay d'ILU SHOP le 2026-11-11 : secours si SasPay ne répond pas. */
 export const FALLBACK_RATES: readonly RateEntry[] = [
-  { network_code: 'vodacom_cd_usd', country_code: 'XC', currency: 'USD', network_name: 'Vodacom M-Pesa', payin: { available: true, tiers: [tier('4.2', '0')] } },
-  { network_code: 'airtel_cd_usd', country_code: 'XC', currency: 'USD', network_name: 'Airtel Money', payin: { available: true, tiers: [tier('4.7', '0')] } },
-  { network_code: 'orange_cd_usd', country_code: 'XC', currency: 'USD', network_name: 'Orange Money', payin: { available: true, tiers: [tier('4.7', '0')] } },
-  { network_code: 'card', country_code: 'XX', currency: 'USD', network_name: 'Carte bancaire', payin: { available: true, tiers: [tier('8.0', '0.5')] } },
+  { network_code: 'vodacom_cd_usd', country_code: 'XC', currency: 'USD', network_name: 'Vodacom M-Pesa', payin: { available: true, tiers: [tier('4.2', '0', '0.03')] } },
+  { network_code: 'airtel_cd_usd', country_code: 'XC', currency: 'USD', network_name: 'Airtel Money', payin: { available: true, tiers: [tier('4.7', '0', '0.03')] } },
+  { network_code: 'orange_cd_usd', country_code: 'XC', currency: 'USD', network_name: 'Orange Money', payin: { available: true, tiers: [tier('4.7', '0', '0.03')] } },
+  { network_code: 'card', country_code: 'XX', currency: 'USD', network_name: 'Carte bancaire', payin: { available: true, tiers: [tier('8.0', '0.5', '0.55')] } },
 ];
 
-function tier(percent: string, fixed: string): FeeTier {
+function tier(percent: string, fixed: string, floor: string): FeeTier {
   return {
     min_amount: '0.5', max_amount: '50000', currency: 'USD', percent, fixed,
-    floor_amount: null, cap_amount: null, fee_charge_mode: 'ADD_ON',
+    floor_amount: floor, cap_amount: null, fee_charge_mode: 'ADD_ON',
   };
 }
 

@@ -6,7 +6,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '') ?? 'https://ilushop.cd';
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://ilushop.store';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // ── Pages statiques ───────────────────────────────────────────────────────

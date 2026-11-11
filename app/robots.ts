@@ -3,7 +3,7 @@
 import type { MetadataRoute } from 'next';
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '') ?? 'https://ilushop.cd';
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://ilushop.store';
 
 export default function robots(): MetadataRoute.Robots {
   return {
