@@ -16,9 +16,10 @@ import type { DeliveryInfo } from '@/lib/firebase/db';
 type Step = 'recap' | 'livraison' | 'paiement' | 'confirmation';
 
 const PAYMENT_METHODS = [
-  { id: 'mpesa', label: 'M-Pesa', icon: '📱', detail: 'Paiement Mobile Money Vodacom' },
-  { id: 'airtel', label: 'Airtel Money', icon: '📲', detail: 'Paiement Mobile Money Airtel' },
-  { id: 'orange', label: 'Orange Money', icon: '🟠', detail: 'Paiement Mobile Money Orange' },
+  { id: 'saspay', label: 'Mobile Money', icon: '⚡', detail: 'M-Pesa · Airtel · Orange — Paiement automatique via Saspay' },
+  { id: 'mpesa', label: 'M-Pesa (manuel)', icon: '📱', detail: 'Paiement Mobile Money Vodacom' },
+  { id: 'airtel', label: 'Airtel Money (manuel)', icon: '📲', detail: 'Paiement Mobile Money Airtel' },
+  { id: 'orange', label: 'Orange Money (manuel)', icon: '🟠', detail: 'Paiement Mobile Money Orange' },
   { id: 'cash', label: 'Cash à la livraison', icon: '💵', detail: 'Payez en espèces à la réception' },
   { id: 'virement', label: 'Virement bancaire', icon: '🏦', detail: 'Virement vers notre compte' },
 ];
@@ -89,6 +90,7 @@ export default function CommandePage() {
 
   const isMM = (MM_IDS as readonly string[]).includes(paymentMethod);
   const mmConfig = isMM ? settings[paymentMethod as MMId] : null;
+  const isSaspay = paymentMethod === 'saspay';
 
   // Redirect if cart empty — only after hydration to avoid false redirect
   useEffect(() => {
@@ -110,6 +112,68 @@ export default function CommandePage() {
     setError(null);
     if (!paymentMethod) { setError('Choisis un mode de paiement.'); return; }
     setLoading(true);
+
+    // ── Saspay : redirect vers la page de paiement hébergée ──────────────────
+    if (isSaspay) {
+      try {
+        const pmLabel = 'Mobile Money (Saspay)';
+        const itemsWithPrice = lines.map(({ item, product }) => ({
+          ...item,
+          priceUSD: product.priceUSD,
+        }));
+
+        let newOrderId: string | null = null;
+        if (user) {
+          newOrderId = await createOrder(user.uid, {
+            items: itemsWithPrice,
+            itemsLabel,
+            totalUSD: subtotal,
+            deliveryInfo: delivery,
+            paymentMethod: pmLabel,
+            status: 'open' as const,
+          });
+          setOrderId(newOrderId);
+        }
+
+        clearCart();
+        setStep('confirmation');
+
+        const siteUrl = window.location.origin;
+        const description = `Commande ILU SHOP — ${itemsLabel}`;
+        const successUrl = newOrderId
+          ? `${siteUrl}/commande/success?order_id=${newOrderId}`
+          : `${siteUrl}/commande/success`;
+
+        const res = await fetch('/api/checkout/saspay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: newOrderId ?? `anon-${Date.now()}`,
+            totalUSD: subtotal,
+            description,
+            successUrl,
+            cancelUrl: `${siteUrl}/commande`,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json() as { error?: string };
+          setError(errData.error ?? 'Erreur lors de la création du paiement.');
+          setStep('paiement');
+          setLoading(false);
+          return;
+        }
+
+        const { checkoutUrl } = await res.json() as { checkoutUrl: string };
+        window.location.href = checkoutUrl;
+        return;
+      } catch {
+        setError('Une erreur est survenue avec Saspay. Réessaie.');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const pmLabel = PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label ?? paymentMethod;
 
@@ -427,6 +491,21 @@ export default function CommandePage() {
                 })}
               </div>
 
+              {/* ── Saspay info ── */}
+              {isSaspay && (
+                <div className="rounded-lg border border-terra/30 bg-terra/5 p-4 flex items-start gap-3">
+                  <span className="text-xl shrink-0">⚡</span>
+                  <div>
+                    <p className="font-display font-semibold text-sm text-ink mb-1">
+                      Paiement sécurisé via Saspay
+                    </p>
+                    <p className="text-sm text-muted font-light leading-relaxed">
+                      Vous serez redirigé vers la page de paiement Saspay. Choisissez M-Pesa, Airtel Money ou Orange Money — le paiement est traité automatiquement.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* ── MM Info & withdrawal fee ── */}
               {isMM && mmConfig && (
                 <div className="rounded-lg border border-terra/30 bg-terra/5 p-4 space-y-3">
@@ -492,8 +571,10 @@ export default function CommandePage() {
                   {loading ? (
                     <>
                       <span className="w-4 h-4 border-2 border-cream/40 border-t-cream rounded-full animate-spin" />
-                      Traitement…
+                      {isSaspay ? 'Redirection vers Saspay…' : 'Traitement…'}
                     </>
+                  ) : isSaspay ? (
+                    '⚡ Payer avec Saspay →'
                   ) : (
                     '✓ Confirmer la commande'
                   )}
@@ -505,17 +586,33 @@ export default function CommandePage() {
           {/* ── Étape 4 : Confirmation ── */}
           {step === 'confirmation' && (
             <div className="text-center py-8">
-              <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center text-4xl mx-auto">
-                ✓
-              </div>
-              <h2 className="mt-6 font-display font-extrabold text-3xl text-ink">
-                Commande enregistrée !
-              </h2>
-              <p className="mt-3 text-muted font-light max-w-sm mx-auto leading-relaxed">
-                Notre équipe va maintenant te contacter via le chat pour finaliser le paiement
-                ({PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label}) et la livraison à{' '}
-                <strong>{delivery.city}{delivery.neighborhood ? `, ${delivery.neighborhood}` : ''}</strong>.
-              </p>
+              {isSaspay ? (
+                <>
+                  <div className="w-20 h-20 rounded-full bg-terra/10 flex items-center justify-center text-4xl mx-auto animate-pulse">
+                    ⚡
+                  </div>
+                  <h2 className="mt-6 font-display font-extrabold text-3xl text-ink">
+                    Redirection en cours…
+                  </h2>
+                  <p className="mt-3 text-muted font-light max-w-sm mx-auto leading-relaxed">
+                    Vous êtes redirigé vers la page de paiement Saspay. Ne fermez pas cette page.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center text-4xl mx-auto">
+                    ✓
+                  </div>
+                  <h2 className="mt-6 font-display font-extrabold text-3xl text-ink">
+                    Commande enregistrée !
+                  </h2>
+                  <p className="mt-3 text-muted font-light max-w-sm mx-auto leading-relaxed">
+                    Notre équipe va maintenant te contacter via le chat pour finaliser le paiement
+                    ({PAYMENT_METHODS.find((p) => p.id === paymentMethod)?.label}) et la livraison à{' '}
+                    <strong>{delivery.city}{delivery.neighborhood ? `, ${delivery.neighborhood}` : ''}</strong>.
+                  </p>
+                </>
+              )}
               {orderId && (
                 <div className="mt-4 inline-block bg-bone rounded-md px-4 py-2 font-mono text-xs text-muted">
                   Réf : {orderId.slice(0, 8).toUpperCase()}
